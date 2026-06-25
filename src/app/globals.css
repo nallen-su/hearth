@@ -155,6 +155,171 @@ a {
   letter-spacing: 0.02em;
 }
 
+/* Body splits into the stage (room-main) and an optional chat sidebar. */
+.room-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.room-main {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+/* Chat sidebar */
+.chat-panel {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.chat-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.chat-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Secondary control buttons (reactions, raise hand, chat toggle) */
+.ctrl-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.ctrl-btn.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+.unread-badge {
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Reactions */
+.reaction-bar {
+  position: relative;
+}
+.reaction-popover {
+  position: absolute;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+.reaction-popover button {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+  border-radius: 8px;
+}
+.reaction-popover button:hover {
+  background: var(--color-border);
+}
+.reactions-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.floating-reaction {
+  position: absolute;
+  bottom: 1rem;
+  font-size: 2rem;
+  animation: float-up 4s ease-out forwards;
+}
+@keyframes float-up {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(-10%) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-80vh) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Raised-hands topbar indicator */
+.hands-indicator {
+  position: relative;
+}
+.hands-pill {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hands-list {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  min-width: 160px;
+  z-index: 10;
+}
+.hands-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.hands-rank {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+}
+
 /* Pagination control for the centered grid (shown only when tiles overflow a page). */
 .hearth-pagination {
   position: absolute;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CarouselLayout,
   ControlBar,
@@ -9,6 +9,7 @@ import {
   MediaDeviceMenu,
   ParticipantTile,
   RoomAudioRenderer,
+  useChat,
   useParticipants,
   useSpeakingParticipants,
   useTracks,
@@ -16,24 +17,37 @@ import {
 import { isEqualTrackRef } from "@livekit/components-core";
 import { Track } from "livekit-client";
 import CenteredGridLayout from "./CenteredGridLayout";
+import ChatPanel from "./ChatPanel";
+import { ReactionBar, ReactionsOverlay, useReactions } from "./Reactions";
+import { RaiseHandButton, RaisedHandsIndicator, useRaisedHands } from "./RaiseHand";
 
 type View = "grid" | "speaker";
 
 /**
  * In-room layout. Grid ↔ speaker toggle; speaker view auto-follows the active speaker
  * and lets you click a thumbnail to pin someone. A screen share (M3) auto-promotes to
- * the main stage over everything else. ParticipantTile renders the speaking ring, mute,
- * and connection-quality indicators on its own.
+ * the main stage. Chat, reactions, and raise-hand (M4) ride the data channel /
+ * participant attributes. ParticipantTile renders speaking/mute/connection indicators.
  *
- * Chat (M4) is intentionally absent. Host-side "stop someone's share" (FR-13) lands with
- * host controls in M6; for now a sharer stops their own share from the control bar.
+ * Host-side "stop someone's share" (FR-13) and chat persistence (FR-16) are deferred to
+ * M6 and M5 respectively.
  */
 export default function Conference({ roomName }: { roomName: string }) {
   const [view, setView] = useState<View>("grid");
   const [pinnedSid, setPinnedSid] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
-  // withPlaceholder keeps a tile for camera-off participants; screen shares are picked
-  // up here too so they can be promoted to the stage.
+  const { reactions, sendReaction } = useReactions();
+  const raisedHands = useRaisedHands();
+
+  // Unread chat badge: useChat shares the room's message buffer with the Chat prefab.
+  const { chatMessages } = useChat();
+  const [seenCount, setSeenCount] = useState(0);
+  useEffect(() => {
+    if (chatOpen) setSeenCount(chatMessages.length);
+  }, [chatOpen, chatMessages.length]);
+  const unread = chatOpen ? 0 : Math.max(0, chatMessages.length - seenCount);
+
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -46,9 +60,8 @@ export default function Conference({ roomName }: { roomName: string }) {
   const screenShareTrack = tracks.find((t) => t.source === Track.Source.ScreenShare);
 
   const participants = useParticipants();
-  const speaking = useSpeakingParticipants(); // loudest first; empty when silent
+  const speaking = useSpeakingParticipants();
 
-  // Speaker-view focus: a manual pin wins, else the active speaker, else first person.
   const speakerFocusSid = useMemo(() => {
     if (view !== "speaker") return null;
     if (pinnedSid && participants.some((p) => p.sid === pinnedSid)) return pinnedSid;
@@ -60,8 +73,7 @@ export default function Conference({ roomName }: { roomName: string }) {
     ? cameraTracks.find((t) => t.participant.sid === speakerFocusSid)
     : undefined;
 
-  // A screen share always takes the main stage (FR-12); otherwise it's speaker view's
-  // focus (or nothing, in grid view).
+  // A screen share always takes the main stage; otherwise speaker view's focus.
   const focusTrack = screenShareTrack ?? speakerFocusTrack;
   const carouselTracks = focusTrack
     ? tracks.filter((t) => !isEqualTrackRef(t, focusTrack))
@@ -79,6 +91,7 @@ export default function Conference({ roomName }: { roomName: string }) {
         </span>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <RaisedHandsIndicator raised={raisedHands} />
           {isPinned && (
             <button className="link-btn" onClick={() => setPinnedSid(null)}>
               Pinned — follow speaker
@@ -95,27 +108,42 @@ export default function Conference({ roomName }: { roomName: string }) {
         </div>
       </header>
 
-      <div className="room-body">
-        {!focusTrack ? (
-          <CenteredGridLayout tracks={cameraTracks} />
-        ) : (
-          <FocusLayoutContainer style={{ height: "100%" }}>
-            <CarouselLayout tracks={carouselTracks}>
-              <ParticipantTile
-                onParticipantClick={(e) => e.participant && setPinnedSid(e.participant.sid)}
-              />
-            </CarouselLayout>
-            <FocusLayout trackRef={focusTrack} />
-          </FocusLayoutContainer>
-        )}
+      <div className="room-content">
+        <div className="room-main">
+          {!focusTrack ? (
+            <CenteredGridLayout tracks={cameraTracks} />
+          ) : (
+            <FocusLayoutContainer style={{ height: "100%" }}>
+              <CarouselLayout tracks={carouselTracks}>
+                <ParticipantTile
+                  onParticipantClick={(e) => e.participant && setPinnedSid(e.participant.sid)}
+                />
+              </CarouselLayout>
+              <FocusLayout trackRef={focusTrack} />
+            </FocusLayoutContainer>
+          )}
+          <ReactionsOverlay reactions={reactions} />
+        </div>
+
+        {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
       </div>
 
       <div className="room-controls">
-        {/* Screen share captures tab/system audio by default (ControlBar capture opts).
-            Chat stays off until M4. */}
+        {/* Screen share captures tab/system audio by default. Chat lives in our own
+            panel below, so the ControlBar's chat button stays off. */}
         <ControlBar
           controls={{ microphone: true, camera: true, screenShare: true, chat: false, leave: true }}
         />
+        <ReactionBar onReact={sendReaction} />
+        <RaiseHandButton raised={raisedHands} />
+        <button
+          className={`ctrl-btn${chatOpen ? " active" : ""}`}
+          aria-pressed={chatOpen}
+          onClick={() => setChatOpen((o) => !o)}
+        >
+          💬 Chat
+          {unread > 0 && <span className="unread-badge">{unread}</span>}
+        </button>
         <label className="speaker-select">
           <span>Speaker</span>
           <MediaDeviceMenu kind="audiooutput" />

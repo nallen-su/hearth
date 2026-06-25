@@ -9,11 +9,11 @@ Guidance for Claude Code (and humans) working in this repository.
 cloud; no per-seat SaaS fees, and all media/metadata stays inside the operator's
 infrastructure.
 
-**Status:** Building milestone by milestone (see implementation plan). **M0** (foundation),
-**M1** (vertical-slice call), **M2** (multi-party: grid ↔ speaker view, active-speaker
-follow + pin, centered-grid, simulcast/adaptive-stream/dynacast), and **M3** (screen share
-with audio, auto-promoted to the main stage) complete. **Next: M4** — chat, reactions &
-raise hand. (Host-side "stop someone's share", FR-13, is deferred to M6.)
+**Status:** Building milestone by milestone (see implementation plan). **M0–M4** complete:
+foundation; vertical-slice call; multi-party (grid ↔ speaker, active-speaker, centered-grid,
+simulcast/adaptive/dynacast); screen share (auto-promoted, audio); chat + emoji reactions +
+raise-hand. **Next: M5** — rooms & invite links. Deferred: chat persistence (FR-16, needs
+M5 rooms), host-side "stop share" (FR-13, M6).
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -94,8 +94,11 @@ src/
     room/[roomName]/
       page.tsx               # server wrapper, resolves room name
       RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (stable Room, simulcast)
-      Conference.tsx         # in-room layout: grid ↔ speaker, active-speaker, screen-share stage
+      Conference.tsx         # in-room layout: grid ↔ speaker, screen-share stage, M4 controls
       CenteredGridLayout.tsx # grid that centers an incomplete last row (LiveKit sizing hooks)
+      ChatPanel.tsx          # side chat panel (LiveKit Chat prefab; ephemeral in v1)
+      Reactions.tsx          # emoji reactions over data channel + floating overlay
+      RaiseHand.tsx          # raise-hand via participant attributes; ordered queue
     api/health/route.ts      # liveness/readiness endpoint
     api/token/route.ts       # mints short-lived, room-scoped LiveKit tokens
   lib/
