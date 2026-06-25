@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useParticipants } from "@livekit/components-react";
 
 const PeopleIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -15,11 +16,32 @@ const CopyIcon = () => (
 );
 
 /**
- * Compact room pill: participant count · room name · copy-link button.
- * Copies the current meeting URL so it's one click to share an invite.
+ * Compact room pill: participant count (click for the attendee list) · room name ·
+ * copy-link button (copies the current meeting URL).
  */
-export default function RoomPill({ roomName, count }: { roomName: string; count: number }) {
+export default function RoomPill({ roomName }: { roomName: string }) {
+  const participants = useParticipants();
+  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close the attendee dropdown on an outside click.
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  const sorted = [...participants].sort((a, b) => {
+    if (a.isLocal) return -1;
+    if (b.isLocal) return 1;
+    return (a.name || a.identity).localeCompare(b.name || b.identity);
+  });
 
   const copyLink = async () => {
     try {
@@ -32,11 +54,33 @@ export default function RoomPill({ roomName, count }: { roomName: string; count:
   };
 
   return (
-    <div className="room-pill">
-      <span className="room-pill-count" title={`${count} ${count === 1 ? "person" : "people"}`}>
-        <PeopleIcon />
-        {count}
-      </span>
+    <div className="room-pill" ref={containerRef}>
+      <div className="room-pill-people">
+        <button
+          className="room-pill-count"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label="Show participants"
+        >
+          <PeopleIcon />
+          {participants.length}
+        </button>
+
+        {open && (
+          <div className="attendee-list">
+            <div className="attendee-list-head">Participants ({participants.length})</div>
+            <ul>
+              {sorted.map((p) => (
+                <li key={p.sid}>
+                  <span className="attendee-name">{p.name || p.identity}</span>
+                  {p.isLocal && <span className="attendee-you">you</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
       <span className="room-pill-sep" />
       <span className="room-pill-name">{roomName}</span>
       <button

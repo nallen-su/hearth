@@ -90,7 +90,7 @@ export default function Conference({ roomName }: { roomName: string }) {
     <div className="room-shell">
       <header className="room-topbar">
         <div className="topbar-left">
-          <RoomPill roomName={roomName} count={participants.length} />
+          <RoomPill roomName={roomName} />
           {screenShareTrack && <span className="share-badge">● Screen sharing</span>}
         </div>
 
