@@ -10,8 +10,10 @@ cloud; no per-seat SaaS fees, and all media/metadata stays inside the operator's
 infrastructure.
 
 **Status:** Building milestone by milestone (see implementation plan). **M0** (foundation),
-**M1** (vertical-slice call), and **M2** (multi-party: grid ↔ speaker view, active-speaker
-follow + pin, simulcast/adaptive-stream/dynacast) complete. **Next: M3** — screen sharing.
+**M1** (vertical-slice call), **M2** (multi-party: grid ↔ speaker view, active-speaker
+follow + pin, centered-grid, simulcast/adaptive-stream/dynacast), and **M3** (screen share
+with audio, auto-promoted to the main stage) complete. **Next: M4** — chat, reactions &
+raise hand. (Host-side "stop someone's share", FR-13, is deferred to M6.)
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -92,7 +94,7 @@ src/
     room/[roomName]/
       page.tsx               # server wrapper, resolves room name
       RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (stable Room, simulcast)
-      Conference.tsx         # in-room layout: grid ↔ speaker toggle, active-speaker, controls
+      Conference.tsx         # in-room layout: grid ↔ speaker, active-speaker, screen-share stage
       CenteredGridLayout.tsx # grid that centers an incomplete last row (LiveKit sizing hooks)
     api/health/route.ts      # liveness/readiness endpoint
     api/token/route.ts       # mints short-lived, room-scoped LiveKit tokens

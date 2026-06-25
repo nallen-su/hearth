@@ -147,6 +147,14 @@ a {
   padding: 0;
 }
 
+.share-badge {
+  margin-left: 0.6rem;
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 /* Pagination control for the centered grid (shown only when tiles overflow a page). */
 .hearth-pagination {
   position: absolute;
