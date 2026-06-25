@@ -6,7 +6,14 @@ rtc:
   tcp_port: 7881
   # Single UDP mux port keeps local port mapping simple (vs. a large UDP range).
   udp_port: 7882
-  # Local dev runs on localhost; production sets this true so clients get a routable IP.
+  # Inside Docker, LiveKit would otherwise advertise the container's internal IP
+  # (172.x) as its ICE candidate — unreachable from the host browser, which shows up
+  # as "negotiation timed out". Pin the advertised IP to localhost so media reaches the
+  # mapped host ports. node_ip overrides use_external_ip.
+  #   - Same-machine dev (two tabs/browsers): 127.0.0.1 (below).
+  #   - Testing from another device on your LAN: set this to your Mac's LAN IP.
+  #   - Production: remove node_ip and set use_external_ip: true.
+  node_ip: 127.0.0.1
   use_external_ip: false
 
 # API key/secret pairs. MUST match LIVEKIT_API_KEY / LIVEKIT_API_SECRET in .env.
