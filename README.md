@@ -15,7 +15,7 @@ coturn (TURN) · Docker Compose. Web-only for v1.
 
 ## Local development
 
-Prerequisites: **Node 18.18+**, **Docker** (with Compose).
+Prerequisites: **Node 22 LTS** (see `.nvmrc` — run `nvm use`), **Docker** (with Compose).
 
 ```bash
 # 1. Configure environment (dev defaults provided)
