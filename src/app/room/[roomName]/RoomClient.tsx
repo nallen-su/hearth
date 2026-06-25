@@ -12,7 +12,7 @@ import {
   useTracks,
   type LocalUserChoices,
 } from "@livekit/components-react";
-import { Track, type RoomOptions } from "livekit-client";
+import { Room, Track, type RoomOptions } from "livekit-client";
 import "@livekit/components-styles";
 
 // Public URL the browser dials. NEXT_PUBLIC_* is inlined at build; fall back to the
@@ -25,17 +25,7 @@ type Stage =
   | { status: "error"; message: string };
 
 export default function RoomClient({ roomName }: { roomName: string }) {
-  const router = useRouter();
   const [stage, setStage] = useState<Stage>({ status: "prejoin" });
-
-  // Honor the camera/mic the user picked in the lobby.
-  const roomOptions = useMemo<RoomOptions>(() => {
-    const choices = stage.status === "connecting" ? stage.choices : undefined;
-    return {
-      videoCaptureDefaults: { deviceId: choices?.videoDeviceId },
-      audioCaptureDefaults: { deviceId: choices?.audioDeviceId },
-    };
-  }, [stage]);
 
   const handlePreJoin = useCallback(
     async (choices: LocalUserChoices) => {
@@ -84,18 +74,60 @@ export default function RoomClient({ roomName }: { roomName: string }) {
     );
   }
 
+  // Remount cleanly on each new connection attempt (key) so the Room instance below is
+  // never reused across sessions.
+  return (
+    <MeetingRoom
+      key={stage.token}
+      token={stage.token}
+      choices={stage.choices}
+      onLeave={() => setStage({ status: "prejoin" })}
+      onError={(message) => setStage({ status: "error", message })}
+    />
+  );
+}
+
+function MeetingRoom({
+  token,
+  choices,
+  onLeave,
+  onError,
+}: {
+  token: string;
+  choices: LocalUserChoices;
+  onLeave: () => void;
+  onError: (message: string) => void;
+}) {
+  const router = useRouter();
+
+  // A single, stable Room instance for the whole session. Constructing it once (rather
+  // than letting LiveKitRoom recreate an internal room as props/renders change, incl.
+  // React StrictMode's double-mount in dev) is what keeps published tracks from
+  // flickering and stops the initial mic/camera state from being re-applied over a
+  // user's manual toggle.
+  const room = useMemo(() => {
+    const options: RoomOptions = {
+      videoCaptureDefaults: { deviceId: choices.videoDeviceId },
+      audioCaptureDefaults: { deviceId: choices.audioDeviceId },
+    };
+    return new Room(options);
+  }, [choices.videoDeviceId, choices.audioDeviceId]);
+
   return (
     <LiveKitRoom
-      token={stage.token}
+      room={room}
+      token={token}
       serverUrl={LIVEKIT_URL}
       connect
-      video={stage.choices.videoEnabled}
-      audio={stage.choices.audioEnabled}
-      options={roomOptions}
+      video={choices.videoEnabled}
+      audio={choices.audioEnabled}
       data-lk-theme="default"
-      style={{ height: "100vh" }}
-      onDisconnected={() => router.push("/")}
-      onError={(err) => setStage({ status: "error", message: err.message })}
+      style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+      onDisconnected={() => {
+        onLeave();
+        router.push("/");
+      }}
+      onError={(err) => onError(err.message)}
     >
       <ConferenceView />
       <RoomAudioRenderer />
@@ -115,11 +147,10 @@ function ConferenceView() {
   });
 
   return (
-    <GridLayout
-      tracks={tracks}
-      style={{ height: "calc(100vh - var(--lk-control-bar-height, 69px))" }}
-    >
-      <ParticipantTile />
-    </GridLayout>
+    <div style={{ flex: 1, minHeight: 0 }}>
+      <GridLayout tracks={tracks} style={{ height: "100%" }}>
+        <ParticipantTile />
+      </GridLayout>
+    </div>
   );
 }
