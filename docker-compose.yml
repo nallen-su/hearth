@@ -27,7 +27,11 @@ services:
       retries: 5
 
   livekit:
-    image: livekit/livekit-server:v1.7.2
+    # Keep this current with the livekit-client/components-react SDK versions in
+    # package.json — too old a server speaks an older signaling protocol (the client
+    # logs "v1 RTC path not found / consider upgrading your LiveKit server") and track
+    # publishing fails to negotiate.
+    image: livekit/livekit-server:v1.13.1
     restart: unless-stopped
     command: --config /etc/livekit.yaml
     ports:
