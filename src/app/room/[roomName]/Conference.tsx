@@ -7,7 +7,6 @@ import {
   FocusLayout,
   FocusLayoutContainer,
   MediaDeviceMenu,
-  ParticipantTile,
   RoomAudioRenderer,
   useChat,
   useParticipants,
@@ -17,6 +16,7 @@ import {
 import { isEqualTrackRef } from "@livekit/components-core";
 import { Track } from "livekit-client";
 import CenteredGridLayout from "./CenteredGridLayout";
+import HandTile from "./HandTile";
 import ChatPanel from "./ChatPanel";
 import { ReactionBar, ReactionsOverlay, useReactions } from "./Reactions";
 import { RaiseHandButton, RaisedHandsIndicator, useRaisedHands } from "./RaiseHand";
@@ -39,6 +39,10 @@ export default function Conference({ roomName }: { roomName: string }) {
 
   const { reactions, sendReaction } = useReactions();
   const raisedHands = useRaisedHands();
+  const raisedIdentities = useMemo(
+    () => new Set(raisedHands.map((h) => h.identity)),
+    [raisedHands],
+  );
 
   // Unread chat badge: useChat shares the room's message buffer with the Chat prefab.
   const { chatMessages } = useChat();
@@ -111,11 +115,12 @@ export default function Conference({ roomName }: { roomName: string }) {
       <div className="room-content">
         <div className="room-main">
           {!focusTrack ? (
-            <CenteredGridLayout tracks={cameraTracks} />
+            <CenteredGridLayout tracks={cameraTracks} raisedIdentities={raisedIdentities} />
           ) : (
             <FocusLayoutContainer style={{ height: "100%" }}>
               <CarouselLayout tracks={carouselTracks}>
-                <ParticipantTile
+                <HandTile
+                  raisedIdentities={raisedIdentities}
                   onParticipantClick={(e) => e.participant && setPinnedSid(e.participant.sid)}
                 />
               </CarouselLayout>

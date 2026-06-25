@@ -190,6 +190,30 @@ a {
   min-height: 0;
 }
 
+/* Tile wrapper so a raised-hand badge can overlay the participant tile. */
+.hearth-tile {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.hearth-tile > .lk-participant-tile {
+  flex: 1;
+  min-width: 0;
+}
+.hand-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  background: var(--color-accent);
+  border-radius: 8px;
+  padding: 2px 7px;
+  font-size: 1rem;
+  line-height: 1.2;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+}
+
 /* Secondary control buttons (reactions, raise hand, chat toggle) */
 .ctrl-btn {
   position: relative;

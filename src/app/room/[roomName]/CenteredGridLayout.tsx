@@ -1,13 +1,9 @@
 "use client";
 
 import { useRef } from "react";
-import {
-  ParticipantTile,
-  useGridLayout,
-  usePagination,
-  useVisualStableUpdate,
-} from "@livekit/components-react";
+import { useGridLayout, usePagination, useVisualStableUpdate } from "@livekit/components-react";
 import type { TrackReferenceOrPlaceholder } from "@livekit/components-core";
+import HandTile from "./HandTile";
 
 /** Stable key for a track reference (real track or camera-off placeholder). */
 function trackKey(t: TrackReferenceOrPlaceholder): string {
@@ -26,8 +22,10 @@ function trackKey(t: TrackReferenceOrPlaceholder): string {
  */
 export default function CenteredGridLayout({
   tracks,
+  raisedIdentities,
 }: {
   tracks: TrackReferenceOrPlaceholder[];
+  raisedIdentities: Set<string>;
 }) {
   const gridEl = useRef<HTMLDivElement>(null);
   const { layout } = useGridLayout(gridEl, tracks.length);
@@ -57,7 +55,14 @@ export default function CenteredGridLayout({
           i === firstOrphanIndex
             ? { gridColumn: `${cols - orphans + 1} / span 2` }
             : { gridColumn: "span 2" };
-        return <ParticipantTile key={trackKey(trackRef)} trackRef={trackRef} style={style} />;
+        return (
+          <HandTile
+            key={trackKey(trackRef)}
+            trackRef={trackRef}
+            raisedIdentities={raisedIdentities}
+            style={style}
+          />
+        );
       })}
 
       {pagination.totalPageCount > 1 && (
