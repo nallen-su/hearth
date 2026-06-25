@@ -37,6 +37,8 @@ export async function createParticipantToken(room: string, displayName: string):
     canPublish: true,
     canSubscribe: true,
     canPublishData: true,
+    // Required for participants to set their own attributes (raise-hand state, M4).
+    canUpdateOwnMetadata: true,
   });
 
   return at.toJwt();
