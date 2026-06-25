@@ -17,6 +17,7 @@ import { isEqualTrackRef } from "@livekit/components-core";
 import { Track } from "livekit-client";
 import CenteredGridLayout from "./CenteredGridLayout";
 import HandTile from "./HandTile";
+import RoomPill from "./RoomPill";
 import ChatPanel from "./ChatPanel";
 import { ReactionBar, ReactionsOverlay, useReactions } from "./Reactions";
 import { RaiseHandButton, RaisedHandsIndicator, useRaisedHands } from "./RaiseHand";
@@ -88,11 +89,10 @@ export default function Conference({ roomName }: { roomName: string }) {
   return (
     <div className="room-shell">
       <header className="room-topbar">
-        <span>
-          <strong>{participants.length}</strong> in “
-          <span style={{ color: "var(--color-accent)" }}>{roomName}</span>”
+        <div className="topbar-left">
+          <RoomPill roomName={roomName} count={participants.length} />
           {screenShareTrack && <span className="share-badge">● Screen sharing</span>}
-        </span>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <RaisedHandsIndicator raised={raisedHands} />

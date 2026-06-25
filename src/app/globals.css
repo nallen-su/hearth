@@ -147,12 +147,60 @@ a {
   padding: 0;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
 .share-badge {
-  margin-left: 0.6rem;
   color: var(--color-accent);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* Room pill: count · name · copy-link */
+.room-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.2rem 0.4rem 0.2rem 0.7rem;
+  font-size: 0.85rem;
+}
+.room-pill-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.room-pill-sep {
+  width: 1px;
+  height: 0.95rem;
+  background: var(--color-border);
+}
+.room-pill-name {
+  color: var(--color-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.room-pill-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+}
+.room-pill-copy:hover {
+  background: var(--color-border);
 }
 
 /* Body splits into the stage (room-main) and an optional chat sidebar. */
