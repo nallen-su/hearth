@@ -9,9 +9,9 @@ Guidance for Claude Code (and humans) working in this repository.
 cloud; no per-seat SaaS fees, and all media/metadata stays inside the operator's
 infrastructure.
 
-**Status:** Building milestone by milestone (see implementation plan). **M0 (foundation)
-complete:** scaffold, local Docker infra, lazy config, DB migration runner, health
-endpoint. **Next: M1** — vertical slice of a real LiveKit call.
+**Status:** Building milestone by milestone (see implementation plan). **M0** (foundation)
+and **M1** (vertical-slice call: token endpoint + pre-join lobby + LiveKit room with
+mic/camera/leave) complete. **Next: M2** — multi-party video & layouts.
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -84,20 +84,30 @@ Health check: `GET /api/health` → 200 `ok` / 503 `degraded` with per-dependenc
 
 ```
 src/
-  app/                 # Next.js App Router
-    layout.tsx         # root layout
-    page.tsx           # landing (placeholder until M1)
-    globals.css        # neutral design tokens (theming deferred to v2)
-    api/health/route.ts# liveness/readiness endpoint
+  app/                       # Next.js App Router
+    layout.tsx               # root layout
+    page.tsx                 # landing: new / join a room
+    JoinForm.tsx             # client form (new meeting / join by name)
+    globals.css              # neutral design tokens + shared primitives (theming = v2)
+    room/[roomName]/
+      page.tsx               # server wrapper, resolves room name
+      RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (mic/cam/leave only)
+    api/health/route.ts      # liveness/readiness endpoint
+    api/token/route.ts       # mints short-lived, room-scoped LiveKit tokens
   lib/
-    config.ts          # lazy, validated env config — getConfig(); add new env here
-    db.ts              # lazy Postgres pool — getPool(), pingDatabase()
-  db/migrations/       # forward-only *.sql, applied lexically by scripts/migrate.ts
-scripts/migrate.ts     # dependency-light migration runner
-docker-compose.yml     # Postgres + LiveKit + coturn (pinned)
-livekit/livekit.yaml   # LiveKit server config (dev)
-coturn/turnserver.conf # TURN config (dev; no TLS)
+    config.ts                # lazy, validated env config — getConfig(); add new env here
+    db.ts                    # lazy Postgres pool — getPool(), pingDatabase()
+    livekit.ts               # server-only token minting (createParticipantToken)
+  db/migrations/             # forward-only *.sql, applied lexically by scripts/migrate.ts
+scripts/migrate.ts           # dependency-light migration runner
+docker-compose.yml           # Postgres + LiveKit + coturn (pinned)
+livekit/livekit.yaml         # LiveKit server config (dev)
+coturn/turnserver.conf       # TURN config (dev; no TLS)
 ```
+
+LiveKit notes: build meeting UI from `@livekit/components-react` primitives, scoped per
+milestone (don't drop in the all-in-one `<VideoConference>` — it pulls in chat/screen-share
+ahead of M3/M4). Client dials `NEXT_PUBLIC_LIVEKIT_URL`; tokens come from `/api/token`.
 
 Conventions: import via `@/*` alias; keep env access inside `getConfig()` (no `process.env`
 reads scattered around); no side effects at module top level (lazy singletons) so
