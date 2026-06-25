@@ -9,9 +9,9 @@ Guidance for Claude Code (and humans) working in this repository.
 cloud; no per-seat SaaS fees, and all media/metadata stays inside the operator's
 infrastructure.
 
-**Status:** Building milestone by milestone (see implementation plan). **M0** (foundation)
-and **M1** (vertical-slice call: token endpoint + pre-join lobby + LiveKit room with
-mic/camera/leave) complete. **Next: M2** — multi-party video & layouts.
+**Status:** Building milestone by milestone (see implementation plan). **M0** (foundation),
+**M1** (vertical-slice call), and **M2** (multi-party: grid ↔ speaker view, active-speaker
+follow + pin, simulcast/adaptive-stream/dynacast) complete. **Next: M3** — screen sharing.
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -91,7 +91,8 @@ src/
     globals.css              # neutral design tokens + shared primitives (theming = v2)
     room/[roomName]/
       page.tsx               # server wrapper, resolves room name
-      RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (mic/cam/leave only)
+      RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (stable Room, simulcast)
+      Conference.tsx         # in-room layout: grid ↔ speaker toggle, active-speaker, controls
     api/health/route.ts      # liveness/readiness endpoint
     api/token/route.ts       # mints short-lived, room-scoped LiveKit tokens
   lib/

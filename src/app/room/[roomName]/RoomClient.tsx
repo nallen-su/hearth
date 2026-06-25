@@ -2,18 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ControlBar,
-  GridLayout,
-  LiveKitRoom,
-  ParticipantTile,
-  PreJoin,
-  RoomAudioRenderer,
-  useTracks,
-  type LocalUserChoices,
-} from "@livekit/components-react";
-import { Room, Track, type RoomOptions } from "livekit-client";
+import { LiveKitRoom, PreJoin, type LocalUserChoices } from "@livekit/components-react";
+import { Room, VideoPresets, type RoomOptions } from "livekit-client";
 import "@livekit/components-styles";
+import Conference from "./Conference";
 
 // Public URL the browser dials. NEXT_PUBLIC_* is inlined at build; fall back to the
 // local dev LiveKit so the app works before .env is fully populated.
@@ -79,6 +71,7 @@ export default function RoomClient({ roomName }: { roomName: string }) {
   return (
     <MeetingRoom
       key={stage.token}
+      roomName={roomName}
       token={stage.token}
       choices={stage.choices}
       onLeave={() => setStage({ status: "prejoin" })}
@@ -88,11 +81,13 @@ export default function RoomClient({ roomName }: { roomName: string }) {
 }
 
 function MeetingRoom({
+  roomName,
   token,
   choices,
   onLeave,
   onError,
 }: {
+  roomName: string;
   token: string;
   choices: LocalUserChoices;
   onLeave: () => void;
@@ -105,9 +100,24 @@ function MeetingRoom({
   // React StrictMode's double-mount in dev) is what keeps published tracks from
   // flickering and stops the initial mic/camera state from being re-applied over a
   // user's manual toggle.
+  //
+  // Scaling knobs (M2): simulcast publishes multiple quality layers; adaptiveStream
+  // downgrades/pauses tracks based on the size they're rendered at; dynacast stops
+  // sending layers nobody is viewing. Together these keep large rooms performant.
   const room = useMemo(() => {
     const options: RoomOptions = {
-      videoCaptureDefaults: { deviceId: choices.videoDeviceId },
+      adaptiveStream: true,
+      dynacast: true,
+      videoCaptureDefaults: {
+        deviceId: choices.videoDeviceId,
+        resolution: VideoPresets.h720.resolution,
+      },
+      publishDefaults: {
+        simulcast: true,
+        videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
+        red: true,
+        dtx: true,
+      },
       audioCaptureDefaults: { deviceId: choices.audioDeviceId },
     };
     return new Room(options);
@@ -122,35 +132,14 @@ function MeetingRoom({
       video={choices.videoEnabled}
       audio={choices.audioEnabled}
       data-lk-theme="default"
-      style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+      style={{ height: "100vh" }}
       onDisconnected={() => {
         onLeave();
         router.push("/");
       }}
       onError={(err) => onError(err.message)}
     >
-      <ConferenceView />
-      <RoomAudioRenderer />
-      {/* M1 is intentionally scoped: mic, camera, leave only. Screen share (M3) and
-          chat (M4) are added in later milestones. */}
-      <ControlBar
-        controls={{ microphone: true, camera: true, screenShare: false, chat: false, leave: true }}
-      />
+      <Conference roomName={roomName} />
     </LiveKitRoom>
-  );
-}
-
-/** Camera-tile grid. Screen-share source is deliberately excluded until M3. */
-function ConferenceView() {
-  const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], {
-    onlySubscribed: false,
-  });
-
-  return (
-    <div style={{ flex: 1, minHeight: 0 }}>
-      <GridLayout tracks={tracks} style={{ height: "100%" }}>
-        <ParticipantTile />
-      </GridLayout>
-    </div>
   );
 }

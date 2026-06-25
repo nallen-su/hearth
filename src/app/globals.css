@@ -82,3 +82,67 @@ a {
 .input::placeholder {
   color: var(--color-text-muted);
 }
+
+/* In-room shell (M2): topbar + body + controls, vertical stack filling the viewport. */
+.room-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.room-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+.room-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.room-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+.speaker-select {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.view-toggle button {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: none;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.view-toggle button[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
