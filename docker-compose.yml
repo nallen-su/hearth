@@ -1,0 +1,56 @@
+# Hearth — local development infrastructure (M0).
+# Brings up the backing services the app needs: Postgres, LiveKit (SFU), coturn (TURN).
+# The Next.js app itself runs on the host via `npm run dev` during development; it is
+# containerized for production delivery in a later milestone (M8).
+#
+#   cp .env.example .env && docker compose up -d
+#
+# All versions are pinned for reproducible self-host bundles (see CLAUDE.md).
+name: hearth
+
+services:
+  postgres:
+    image: postgres:16.3-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hearth}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hearth_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-hearth}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hearth}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  livekit:
+    image: livekit/livekit-server:v1.7.2
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880" # HTTP / WebSocket signaling
+      - "7881:7881" # ICE/TCP fallback
+      - "7882:7882/udp" # ICE/UDP (single mux port)
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml:ro
+
+  # coturn provides TURN relay for participants behind restrictive NATs. It is primarily
+  # exercised in M1 (cross-network call testing). NOTE: TURN relay needs host networking
+  # or a mapped relay-port range to work across networks; on macOS Docker Desktop host
+  # networking is limited, so for same-machine dev LiveKit's localhost candidates suffice.
+  coturn:
+    image: coturn/coturn:4.6.2-alpine
+    restart: unless-stopped
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "50000-50050:50000-50050/udp" # relay port range (kept small for dev)
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+
+volumes:
+  postgres_data:
