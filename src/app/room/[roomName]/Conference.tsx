@@ -6,7 +6,6 @@ import {
   ControlBar,
   FocusLayout,
   FocusLayoutContainer,
-  GridLayout,
   MediaDeviceMenu,
   ParticipantTile,
   RoomAudioRenderer,
@@ -15,6 +14,7 @@ import {
   useTracks,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
+import CenteredGridLayout from "./CenteredGridLayout";
 
 type View = "grid" | "speaker";
 
@@ -82,9 +82,7 @@ export default function Conference({ roomName }: { roomName: string }) {
 
       <div className="room-body">
         {view === "grid" || !focusTrack ? (
-          <GridLayout tracks={tracks} style={{ height: "100%" }}>
-            <ParticipantTile />
-          </GridLayout>
+          <CenteredGridLayout tracks={tracks} />
         ) : (
           <FocusLayoutContainer style={{ height: "100%" }}>
             <CarouselLayout tracks={carouselTracks}>

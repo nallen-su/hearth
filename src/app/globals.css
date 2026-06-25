@@ -146,3 +146,29 @@ a {
   cursor: pointer;
   padding: 0;
 }
+
+/* Pagination control for the centered grid (shown only when tiles overflow a page). */
+.hearth-pagination {
+  position: absolute;
+  bottom: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0.6rem;
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+.hearth-pagination button {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.2rem;
+}

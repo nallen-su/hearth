@@ -93,6 +93,7 @@ src/
       page.tsx               # server wrapper, resolves room name
       RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (stable Room, simulcast)
       Conference.tsx         # in-room layout: grid ↔ speaker toggle, active-speaker, controls
+      CenteredGridLayout.tsx # grid that centers an incomplete last row (LiveKit sizing hooks)
     api/health/route.ts      # liveness/readiness endpoint
     api/token/route.ts       # mints short-lived, room-scoped LiveKit tokens
   lib/
