@@ -14,7 +14,13 @@ export interface Config {
   isProd: boolean;
   appUrl: string;
   database: { url: string };
-  livekit: { url: string; apiKey: string; apiSecret: string };
+  livekit: { url: string; httpUrl: string; apiKey: string; apiSecret: string };
+  meeting: { maxParticipants: number };
+}
+
+/** Derive the LiveKit server HTTP(S) URL (for the server SDK) from its ws(s) URL. */
+function toHttpUrl(wsUrl: string): string {
+  return wsUrl.replace(/^wss:/i, "https:").replace(/^ws:/i, "http:");
 }
 
 let cached: Config | null = null;
@@ -43,8 +49,13 @@ export function getConfig(): Config {
     livekit: {
       // Server-side URL (token minting / server SDK). Wired up in M1.
       url: read("LIVEKIT_URL", "ws://localhost:7880"),
+      httpUrl: toHttpUrl(read("LIVEKIT_URL", "ws://localhost:7880")),
       apiKey: read("LIVEKIT_API_KEY", "devkey"),
       apiSecret: read("LIVEKIT_API_SECRET", "devsecret_change_me_at_least_32_characters"),
+    },
+    meeting: {
+      // Server-enforced cap per room (FR-5). Override per-room at creation if needed.
+      maxParticipants: Number(read("MAX_PARTICIPANTS", "100")),
     },
   };
 

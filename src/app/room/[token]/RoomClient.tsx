@@ -16,14 +16,20 @@ type Stage =
   | { status: "connecting"; choices: LocalUserChoices; token: string }
   | { status: "error"; message: string };
 
-export default function RoomClient({ roomName }: { roomName: string }) {
+export default function RoomClient({
+  inviteToken,
+  roomName,
+}: {
+  inviteToken: string;
+  roomName: string;
+}) {
   const [stage, setStage] = useState<Stage>({ status: "prejoin" });
 
   const handlePreJoin = useCallback(
     async (choices: LocalUserChoices) => {
       try {
         const res = await fetch(
-          `/api/token?room=${encodeURIComponent(roomName)}&username=${encodeURIComponent(
+          `/api/token?invite=${encodeURIComponent(inviteToken)}&username=${encodeURIComponent(
             choices.username,
           )}`,
         );
@@ -34,7 +40,7 @@ export default function RoomClient({ roomName }: { roomName: string }) {
         setStage({ status: "error", message: (err as Error).message });
       }
     },
-    [roomName],
+    [inviteToken],
   );
 
   if (stage.status === "error") {

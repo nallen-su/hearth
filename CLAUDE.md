@@ -9,11 +9,13 @@ Guidance for Claude Code (and humans) working in this repository.
 cloud; no per-seat SaaS fees, and all media/metadata stays inside the operator's
 infrastructure.
 
-**Status:** Building milestone by milestone (see implementation plan). **M0–M4** complete:
+**Status:** Building milestone by milestone (see implementation plan). **M0–M5** complete:
 foundation; vertical-slice call; multi-party (grid ↔ speaker, active-speaker, centered-grid,
 simulcast/adaptive/dynacast); screen share (auto-promoted, audio); chat + emoji reactions +
-raise-hand. **Next: M5** — rooms & invite links. Deferred: chat persistence (FR-16, needs
-M5 rooms), host-side "stop share" (FR-13, M6).
+raise-hand; rooms & invite links (Postgres-backed, unguessable token = join credential,
+expiry/revoke enforced, server-side participant cap). **Next: M6** — waiting room & host
+controls. Deferred: chat persistence (FR-16, now unblocked — needs server-side capture);
+host-triggered revoke UI + "stop share" (FR-13) land with host controls in M6.
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -91,8 +93,8 @@ src/
     page.tsx                 # landing: new / join a room
     JoinForm.tsx             # client form (new meeting / join by name)
     globals.css              # neutral design tokens + shared primitives (theming = v2)
-    room/[roomName]/
-      page.tsx               # server wrapper, resolves room name
+    room/[token]/            # [token] is the invite token (the shareable join credential)
+      page.tsx               # server: resolves invite token -> room (or invalid-link msg)
       RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (stable Room, simulcast)
       Conference.tsx         # in-room layout: grid ↔ speaker, screen-share stage, M4 controls
       CenteredGridLayout.tsx # grid that centers an incomplete last row (LiveKit sizing hooks)
@@ -100,11 +102,13 @@ src/
       Reactions.tsx          # emoji reactions over data channel + floating overlay
       RaiseHand.tsx          # raise-hand via participant attributes; ordered queue
     api/health/route.ts      # liveness/readiness endpoint
-    api/token/route.ts       # mints short-lived, room-scoped LiveKit tokens
+    api/rooms/route.ts       # POST: create room (instant/named) + invite link
+    api/token/route.ts       # validates invite + cap, mints room-scoped LiveKit token
   lib/
     config.ts                # lazy, validated env config — getConfig(); add new env here
     db.ts                    # lazy Postgres pool — getPool(), pingDatabase()
-    livekit.ts               # server-only token minting (createParticipantToken)
+    livekit.ts               # token minting (createParticipantToken) + countParticipants
+    rooms.ts                 # rooms/invite-links data access (create/resolve/revoke)
   db/migrations/             # forward-only *.sql, applied lexically by scripts/migrate.ts
 scripts/migrate.ts           # dependency-light migration runner
 docker-compose.yml           # Postgres + LiveKit + coturn (pinned)
