@@ -130,7 +130,8 @@ export default function Conference({ roomName }: { roomName: string }) {
           <ReactionsOverlay reactions={reactions} />
         </div>
 
-        {chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
+        {/* Kept mounted (hidden via CSS) so chat history accumulates while closed. */}
+        <ChatPanel hidden={!chatOpen} onClose={() => setChatOpen(false)} />
       </div>
 
       <div className="room-controls">

@@ -269,26 +269,32 @@ a {
   background: var(--color-border);
 }
 
-/* Body splits into the stage (room-main) and an optional chat sidebar. */
+/* Body splits into the stage (room-main) and the chat sidebar. */
 .room-content {
   flex: 1;
   min-height: 0;
   display: flex;
+  overflow: hidden;
 }
 .room-main {
   flex: 1;
   min-width: 0;
   position: relative;
+  overflow: hidden;
 }
 
-/* Chat sidebar */
+/* Chat sidebar. Stays mounted; hidden via .is-hidden so history persists while closed. */
 .chat-panel {
-  width: 320px;
+  width: 300px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--color-border);
   background: var(--color-bg);
+  overflow: hidden;
+}
+.chat-panel.is-hidden {
+  display: none;
 }
 .chat-panel-head {
   display: flex;
@@ -299,9 +305,20 @@ a {
   font-weight: 600;
   font-size: 0.9rem;
 }
+/* LiveKit's <Chat> sets its own width (clamp ~55ch) and a centered "Messages" header —
+   override so it fills our panel, and drop its header since we render our own. */
 .chat-body {
   flex: 1;
   min-height: 0;
+}
+.chat-panel .lk-chat {
+  width: 100%;
+  height: 100%;
+  grid-template-rows: 1fr var(--lk-control-bar-height);
+  border-left: none;
+}
+.chat-panel .lk-chat-header {
+  display: none;
 }
 
 /* Tile wrapper so a raised-hand badge can overlay the participant tile. */
