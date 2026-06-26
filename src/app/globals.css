@@ -235,13 +235,63 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.attendee-you {
+.attendee-you,
+.attendee-tag {
   flex-shrink: 0;
   font-size: 0.68rem;
   color: var(--color-text-muted);
   background: var(--color-border);
   border-radius: 999px;
   padding: 0.05rem 0.45rem;
+}
+.attendee-tag {
+  color: var(--color-accent);
+}
+.attendee-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: auto;
+}
+.attendee-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.15rem 0.25rem;
+  border-radius: 6px;
+}
+.attendee-actions button:hover {
+  background: var(--color-border);
+}
+.attendee-actions button.danger:hover {
+  background: #7f1d1d;
+}
+.attendee-list-foot {
+  border-top: 1px solid var(--color-border);
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.5rem 0.2rem;
+}
+
+/* Host bar (topbar) + lock badge */
+.host-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.ctrl-btn.danger {
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+.ctrl-btn.danger:hover {
+  background: #7f1d1d;
+  color: #fff;
+}
+.lock-badge {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 .room-pill-sep {
   width: 1px;

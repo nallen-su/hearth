@@ -12,6 +12,7 @@ export interface Room {
   slug: string;
   name: string | null;
   maxParticipants: number;
+  locked: boolean;
 }
 
 /** Unguessable invite token (~22 url-safe chars). */
@@ -40,17 +41,20 @@ function generateSlug(name?: string): string {
 export async function createRoom(opts: { name?: string } = {}): Promise<{
   room: Room;
   token: string;
+  hostKey: string;
 }> {
   const pool = getPool();
   const maxParticipants = getConfig().meeting.maxParticipants;
   const name = opts.name?.trim() || null;
+  const hostKey = generateToken();
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const slug = generateSlug(name ?? undefined);
     try {
       const { rows } = await pool.query<{ id: string }>(
-        `INSERT INTO rooms (slug, name, max_participants) VALUES ($1, $2, $3) RETURNING id`,
-        [slug, name, maxParticipants],
+        `INSERT INTO rooms (slug, name, max_participants, host_key)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [slug, name, maxParticipants, hostKey],
       );
       const roomId = rows[0]!.id;
       const token = generateToken();
@@ -58,7 +62,7 @@ export async function createRoom(opts: { name?: string } = {}): Promise<{
         token,
         roomId,
       ]);
-      return { room: { id: roomId, slug, name, maxParticipants }, token };
+      return { room: { id: roomId, slug, name, maxParticipants, locked: false }, token, hostKey };
     } catch (err) {
       // 23505 = unique_violation (slug collision) — retry with a new slug.
       if ((err as { code?: string }).code === "23505" && attempt < 2) continue;
@@ -70,19 +74,22 @@ export async function createRoom(opts: { name?: string } = {}): Promise<{
 
 export type InviteResolution =
   | { ok: true; room: Room }
-  | { ok: false; reason: "not_found" | "revoked" | "expired" };
+  | { ok: false; reason: "not_found" | "revoked" | "expired" | "ended" };
 
-/** Resolve an invite token to its room, validating it's active and unexpired. */
+/** Resolve an invite token to its room, validating it's active, unexpired, and not ended. */
 export async function resolveInvite(token: string): Promise<InviteResolution> {
   const { rows } = await getPool().query<{
     id: string;
     slug: string;
     name: string | null;
     max_participants: number;
+    locked: boolean;
+    ended_at: Date | null;
     expires_at: Date | null;
     revoked_at: Date | null;
   }>(
-    `SELECT r.id, r.slug, r.name, r.max_participants, l.expires_at, l.revoked_at
+    `SELECT r.id, r.slug, r.name, r.max_participants, r.locked, r.ended_at,
+            l.expires_at, l.revoked_at
        FROM invite_links l JOIN rooms r ON r.id = l.room_id
       WHERE l.token = $1`,
     [token],
@@ -91,6 +98,7 @@ export async function resolveInvite(token: string): Promise<InviteResolution> {
   const row = rows[0];
   if (!row) return { ok: false, reason: "not_found" };
   if (row.revoked_at) return { ok: false, reason: "revoked" };
+  if (row.ended_at) return { ok: false, reason: "ended" };
   if (row.expires_at && row.expires_at.getTime() <= Date.now()) {
     return { ok: false, reason: "expired" };
   }
@@ -102,8 +110,50 @@ export async function resolveInvite(token: string): Promise<InviteResolution> {
       slug: row.slug,
       name: row.name,
       maxParticipants: row.max_participants,
+      locked: row.locked,
     },
   };
+}
+
+/**
+ * Verify a host key against an invite token's room. Returns the room when the key
+ * matches (the caller is the host), else null. Server-authoritative gate for host
+ * controls — never trust a client-asserted role.
+ */
+export async function verifyHost(token: string, hostKey: string): Promise<Room | null> {
+  if (!hostKey) return null;
+  const { rows } = await getPool().query<{
+    id: string;
+    slug: string;
+    name: string | null;
+    max_participants: number;
+    locked: boolean;
+    host_key: string | null;
+  }>(
+    `SELECT r.id, r.slug, r.name, r.max_participants, r.locked, r.host_key
+       FROM invite_links l JOIN rooms r ON r.id = l.room_id
+      WHERE l.token = $1`,
+    [token],
+  );
+  const row = rows[0];
+  if (!row || !row.host_key || row.host_key !== hostKey) return null;
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    maxParticipants: row.max_participants,
+    locked: row.locked,
+  };
+}
+
+export async function setRoomLocked(roomId: string, locked: boolean): Promise<void> {
+  await getPool().query(`UPDATE rooms SET locked = $2 WHERE id = $1`, [roomId, locked]);
+}
+
+export async function markRoomEnded(roomId: string): Promise<void> {
+  await getPool().query(`UPDATE rooms SET ended_at = now() WHERE id = $1 AND ended_at IS NULL`, [
+    roomId,
+  ]);
 }
 
 /** Revoke an invite link so it can no longer be used to join (FR-4). */

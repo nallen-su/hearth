@@ -35,6 +35,12 @@ export default function JoinForm() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Couldn’t create the meeting.");
+      // Remember the host key locally — it makes this browser the meeting host.
+      try {
+        localStorage.setItem(`hearth-host:${body.token}`, body.hostKey);
+      } catch {
+        /* storage may be unavailable (private mode) — host controls just won't show */
+      }
       router.push(`/room/${body.token}`);
     } catch (err) {
       setError((err as Error).message);

@@ -13,9 +13,10 @@ infrastructure.
 foundation; vertical-slice call; multi-party (grid ↔ speaker, active-speaker, centered-grid,
 simulcast/adaptive/dynacast); screen share (auto-promoted, audio); chat + emoji reactions +
 raise-hand; rooms & invite links (Postgres-backed, unguessable token = join credential,
-expiry/revoke enforced, server-side participant cap). **Next: M6** — waiting room & host
-controls. Deferred: chat persistence (FR-16, now unblocked — needs server-side capture);
-host-triggered revoke UI + "stop share" (FR-13) land with host controls in M6.
+expiry/revoke enforced, server-side participant cap). **M6 in progress:** host controls
+done (host key in localStorage = host identity; server-authoritative mute/mute-all/remove/
+stop-share/lower-hand/lock/end via `/api/host`). **Next: M6 waiting room.** Deferred: chat
+persistence (FR-16, needs server-side capture); host-transfer/co-host (FR-23, pre-accounts).
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -102,8 +103,9 @@ src/
       Reactions.tsx          # emoji reactions over data channel + floating overlay
       RaiseHand.tsx          # raise-hand via participant attributes; ordered queue
     api/health/route.ts      # liveness/readiness endpoint
-    api/rooms/route.ts       # POST: create room (instant/named) + invite link
-    api/token/route.ts       # validates invite + cap, mints room-scoped LiveKit token
+    api/rooms/route.ts       # POST: create room (instant/named) + invite link + host key
+    api/token/route.ts       # validates invite + cap + lock, mints token (role from host key)
+    api/host/route.ts        # POST: host actions (mute/remove/lock/end/…); verifies host key
   lib/
     config.ts                # lazy, validated env config — getConfig(); add new env here
     db.ts                    # lazy Postgres pool — getPool(), pingDatabase()

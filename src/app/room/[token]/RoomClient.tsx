@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiveKitRoom, PreJoin, type LocalUserChoices } from "@livekit/components-react";
 import { Room, VideoPresets, type RoomOptions } from "livekit-client";
@@ -13,7 +13,7 @@ const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? "ws://localhost:7880"
 
 type Stage =
   | { status: "prejoin" }
-  | { status: "connecting"; choices: LocalUserChoices; token: string }
+  | { status: "connecting"; choices: LocalUserChoices; token: string; isHost: boolean }
   | { status: "error"; message: string };
 
 export default function RoomClient({
@@ -25,22 +25,31 @@ export default function RoomClient({
 }) {
   const [stage, setStage] = useState<Stage>({ status: "prejoin" });
 
+  // The host key (if this browser created the meeting) lives in localStorage, keyed by
+  // invite token. Read it client-side after mount to avoid an SSR/hydration mismatch.
+  const [hostKey, setHostKey] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setHostKey(localStorage.getItem(`hearth-host:${inviteToken}`));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [inviteToken]);
+
   const handlePreJoin = useCallback(
     async (choices: LocalUserChoices) => {
       try {
-        const res = await fetch(
-          `/api/token?invite=${encodeURIComponent(inviteToken)}&username=${encodeURIComponent(
-            choices.username,
-          )}`,
-        );
+        const params = new URLSearchParams({ invite: inviteToken, username: choices.username });
+        if (hostKey) params.set("hostKey", hostKey);
+        const res = await fetch(`/api/token?${params.toString()}`);
         const body = await res.json();
         if (!res.ok) throw new Error(body.error ?? "Failed to get access token.");
-        setStage({ status: "connecting", choices, token: body.token });
+        setStage({ status: "connecting", choices, token: body.token, isHost: Boolean(body.isHost) });
       } catch (err) {
         setStage({ status: "error", message: (err as Error).message });
       }
     },
-    [inviteToken],
+    [inviteToken, hostKey],
   );
 
   if (stage.status === "error") {
@@ -78,6 +87,9 @@ export default function RoomClient({
     <MeetingRoom
       key={stage.token}
       roomName={roomName}
+      inviteToken={inviteToken}
+      hostKey={stage.isHost ? hostKey : null}
+      isHost={stage.isHost}
       token={stage.token}
       choices={stage.choices}
       onLeave={() => setStage({ status: "prejoin" })}
@@ -88,12 +100,18 @@ export default function RoomClient({
 
 function MeetingRoom({
   roomName,
+  inviteToken,
+  hostKey,
+  isHost,
   token,
   choices,
   onLeave,
   onError,
 }: {
   roomName: string;
+  inviteToken: string;
+  hostKey: string | null;
+  isHost: boolean;
   token: string;
   choices: LocalUserChoices;
   onLeave: () => void;
@@ -145,7 +163,12 @@ function MeetingRoom({
       }}
       onError={(err) => onError(err.message)}
     >
-      <Conference roomName={roomName} />
+      <Conference
+        roomName={roomName}
+        inviteToken={inviteToken}
+        hostKey={hostKey}
+        isHost={isHost}
+      />
     </LiveKitRoom>
   );
 }

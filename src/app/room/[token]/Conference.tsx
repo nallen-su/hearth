@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CarouselLayout,
   ControlBar,
@@ -9,7 +9,10 @@ import {
   MediaDeviceMenu,
   RoomAudioRenderer,
   useChat,
+  useDataChannel,
+  useLocalParticipant,
   useParticipants,
+  useRoomInfo,
   useSpeakingParticipants,
   useTracks,
 } from "@livekit/components-react";
@@ -21,22 +24,36 @@ import RoomPill from "./RoomPill";
 import ChatPanel from "./ChatPanel";
 import { ReactionBar, ReactionsOverlay, useReactions } from "./Reactions";
 import { RaiseHandButton, RaisedHandsIndicator, useRaisedHands } from "./RaiseHand";
+import { useHostActions } from "./useHostActions";
 
 type View = "grid" | "speaker";
 
 /**
  * In-room layout. Grid ↔ speaker toggle; speaker view auto-follows the active speaker
- * and lets you click a thumbnail to pin someone. A screen share (M3) auto-promotes to
- * the main stage. Chat, reactions, and raise-hand (M4) ride the data channel /
- * participant attributes. ParticipantTile renders speaking/mute/connection indicators.
+ * and lets you click a thumbnail to pin someone. Screen share (M3) auto-promotes to the
+ * main stage. Chat, reactions, raise-hand (M4) ride the data channel / attributes.
  *
- * Host-side "stop someone's share" (FR-13) and chat persistence (FR-16) are deferred to
- * M6 and M5 respectively.
+ * Host controls (M6): meeting-level (mute-all, lock, end) live in the topbar host bar;
+ * per-participant (mute, lower hand, stop share, remove) live in the attendee dropdown.
+ * All are enforced server-side via the host key — the UI is just the trigger.
  */
-export default function Conference({ roomName }: { roomName: string }) {
+export default function Conference({
+  roomName,
+  inviteToken,
+  hostKey,
+  isHost,
+}: {
+  roomName: string;
+  inviteToken: string;
+  hostKey: string | null;
+  isHost: boolean;
+}) {
   const [view, setView] = useState<View>("grid");
   const [pinnedSid, setPinnedSid] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+
+  const { localParticipant } = useLocalParticipant();
+  const host = useHostActions(inviteToken, hostKey);
 
   const { reactions, sendReaction } = useReactions();
   const raisedHands = useRaisedHands();
@@ -44,6 +61,41 @@ export default function Conference({ roomName }: { roomName: string }) {
     () => new Set(raisedHands.map((h) => h.identity)),
     [raisedHands],
   );
+
+  // Host "lower hand" command, sent to a single participant; the target clears its own
+  // hand attribute on receipt (only the participant — or an admin — can change it).
+  const { send: sendHostCmd } = useDataChannel("host_cmd", (msg) => {
+    try {
+      const data = JSON.parse(new TextDecoder().decode(msg.payload));
+      if (data?.type === "lower_hand") {
+        void localParticipant.setAttributes({
+          ...localParticipant.attributes,
+          hand_raised: "",
+        });
+      }
+    } catch {
+      /* ignore malformed command */
+    }
+  });
+  const lowerHand = useCallback(
+    (identity: string) => {
+      void sendHostCmd(new TextEncoder().encode(JSON.stringify({ type: "lower_hand" })), {
+        reliable: true,
+        destinationIdentities: [identity],
+      });
+    },
+    [sendHostCmd],
+  );
+
+  // Lock state lives in LiveKit room metadata so every client sees it live.
+  const roomInfo = useRoomInfo();
+  const locked = useMemo(() => {
+    try {
+      return Boolean(JSON.parse(roomInfo.metadata || "{}").locked);
+    } catch {
+      return false;
+    }
+  }, [roomInfo.metadata]);
 
   // Unread chat badge: useChat shares the room's message buffer with the Chat prefab.
   const { chatMessages } = useChat();
@@ -63,6 +115,7 @@ export default function Conference({ roomName }: { roomName: string }) {
 
   const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
   const screenShareTrack = tracks.find((t) => t.source === Track.Source.ScreenShare);
+  const sharingIdentity = screenShareTrack?.participant.identity ?? null;
 
   const participants = useParticipants();
   const speaking = useSpeakingParticipants();
@@ -78,7 +131,6 @@ export default function Conference({ roomName }: { roomName: string }) {
     ? cameraTracks.find((t) => t.participant.sid === speakerFocusSid)
     : undefined;
 
-  // A screen share always takes the main stage; otherwise speaker view's focus.
   const focusTrack = screenShareTrack ?? speakerFocusTrack;
   const carouselTracks = focusTrack
     ? tracks.filter((t) => !isEqualTrackRef(t, focusTrack))
@@ -90,8 +142,19 @@ export default function Conference({ roomName }: { roomName: string }) {
     <div className="room-shell">
       <header className="room-topbar">
         <div className="topbar-left">
-          <RoomPill roomName={roomName} />
+          <RoomPill
+            roomName={roomName}
+            isHost={isHost}
+            raisedIdentities={raisedIdentities}
+            sharingIdentity={sharingIdentity}
+            onMute={host.mute}
+            onLowerHand={lowerHand}
+            onStopShare={host.stopShare}
+            onRemove={host.remove}
+            onMuteAll={() => host.muteAll(localParticipant.identity)}
+          />
           {screenShareTrack && <span className="share-badge">● Screen sharing</span>}
+          {locked && <span className="lock-badge">🔒 Locked</span>}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -100,6 +163,24 @@ export default function Conference({ roomName }: { roomName: string }) {
             <button className="link-btn" onClick={() => setPinnedSid(null)}>
               Pinned — follow speaker
             </button>
+          )}
+          {isHost && (
+            <div className="host-bar">
+              <button
+                className={`ctrl-btn${locked ? " active" : ""}`}
+                onClick={() => (locked ? host.unlock() : host.lock())}
+              >
+                {locked ? "🔓 Unlock" : "🔒 Lock"}
+              </button>
+              <button
+                className="ctrl-btn danger"
+                onClick={() => {
+                  if (window.confirm("End the meeting for everyone?")) host.end();
+                }}
+              >
+                End
+              </button>
+            </div>
           )}
           <div className="view-toggle" role="group" aria-label="Layout">
             <button aria-pressed={view === "grid"} onClick={() => setView("grid")}>
@@ -135,8 +216,6 @@ export default function Conference({ roomName }: { roomName: string }) {
       </div>
 
       <div className="room-controls">
-        {/* Screen share captures tab/system audio by default. Chat lives in our own
-            panel below, so the ControlBar's chat button stays off. */}
         <ControlBar
           controls={{ microphone: true, camera: true, screenShare: true, chat: false, leave: true }}
         />

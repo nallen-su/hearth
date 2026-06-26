@@ -15,11 +15,43 @@ const CopyIcon = () => (
   </svg>
 );
 
+/** Read a participant's role from its metadata ({"role":"host"|"guest"}). */
+function isHostParticipant(metadata: string | undefined): boolean {
+  if (!metadata) return false;
+  try {
+    return JSON.parse(metadata).role === "host";
+  } catch {
+    return false;
+  }
+}
+
+interface HostControls {
+  isHost: boolean;
+  raisedIdentities: Set<string>;
+  sharingIdentity: string | null;
+  onMute: (identity: string) => void;
+  onLowerHand: (identity: string) => void;
+  onStopShare: (identity: string) => void;
+  onRemove: (identity: string) => void;
+  onMuteAll: () => void;
+}
+
 /**
  * Compact room pill: participant count (click for the attendee list) · room name ·
- * copy-link button (copies the current meeting URL).
+ * copy-link button. When the local user is the host, the attendee list also exposes
+ * per-participant controls (mute, lower hand, stop share, remove) and "mute all".
  */
-export default function RoomPill({ roomName }: { roomName: string }) {
+export default function RoomPill({
+  roomName,
+  isHost,
+  raisedIdentities,
+  sharingIdentity,
+  onMute,
+  onLowerHand,
+  onStopShare,
+  onRemove,
+  onMuteAll,
+}: { roomName: string } & HostControls) {
   const participants = useParticipants();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -70,13 +102,49 @@ export default function RoomPill({ roomName }: { roomName: string }) {
           <div className="attendee-list">
             <div className="attendee-list-head">Participants ({participants.length})</div>
             <ul>
-              {sorted.map((p) => (
-                <li key={p.sid}>
-                  <span className="attendee-name">{p.name || p.identity}</span>
-                  {p.isLocal && <span className="attendee-you">you</span>}
-                </li>
-              ))}
+              {sorted.map((p) => {
+                const host = isHostParticipant(p.metadata);
+                const showActions = isHost && !p.isLocal;
+                return (
+                  <li key={p.sid}>
+                    <span className="attendee-name">{p.name || p.identity}</span>
+                    {host && <span className="attendee-tag">host</span>}
+                    {p.isLocal && <span className="attendee-you">you</span>}
+                    {showActions && (
+                      <span className="attendee-actions">
+                        {raisedIdentities.has(p.identity) && (
+                          <button title="Lower hand" onClick={() => onLowerHand(p.identity)}>
+                            ✋
+                          </button>
+                        )}
+                        {sharingIdentity === p.identity && (
+                          <button title="Stop screen share" onClick={() => onStopShare(p.identity)}>
+                            ⊘
+                          </button>
+                        )}
+                        <button title="Mute" onClick={() => onMute(p.identity)}>
+                          🔇
+                        </button>
+                        <button
+                          className="danger"
+                          title="Remove from meeting"
+                          onClick={() => onRemove(p.identity)}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
+            {isHost && (
+              <div className="attendee-list-foot">
+                <button className="link-btn" onClick={onMuteAll}>
+                  Mute everyone
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
