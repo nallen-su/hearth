@@ -24,7 +24,17 @@ import RoomPill from "./RoomPill";
 import ChatPanel from "./ChatPanel";
 import { ReactionBar, ReactionsOverlay, useReactions } from "./Reactions";
 import { RaiseHandButton, RaisedHandsIndicator, useRaisedHands } from "./RaiseHand";
+import { WaitingHostIndicator } from "./WaitingRoom";
 import { useHostActions } from "./useHostActions";
+
+/** Read a participant's role from metadata ({"role": ...}). */
+function roleOf(metadata: string | undefined): string {
+  try {
+    return JSON.parse(metadata || "{}").role ?? "guest";
+  } catch {
+    return "guest";
+  }
+}
 
 type View = "grid" | "speaker";
 
@@ -87,13 +97,14 @@ export default function Conference({
     [sendHostCmd],
   );
 
-  // Lock state lives in LiveKit room metadata so every client sees it live.
+  // Lock + waiting-room state live in LiveKit room metadata so every client sees it live.
   const roomInfo = useRoomInfo();
-  const locked = useMemo(() => {
+  const { locked, waitingEnabled } = useMemo(() => {
     try {
-      return Boolean(JSON.parse(roomInfo.metadata || "{}").locked);
+      const m = JSON.parse(roomInfo.metadata || "{}");
+      return { locked: Boolean(m.locked), waitingEnabled: Boolean(m.waitingEnabled) };
     } catch {
-      return false;
+      return { locked: false, waitingEnabled: false };
     }
   }, [roomInfo.metadata]);
 
@@ -119,6 +130,16 @@ export default function Conference({
 
   const participants = useParticipants();
   const speaking = useSpeakingParticipants();
+
+  // People held in the waiting room (host admits them). useParticipants re-renders on
+  // metadata changes, so this updates as people arrive and get admitted.
+  const waitingParticipants = useMemo(
+    () =>
+      participants
+        .filter((p) => roleOf(p.metadata) === "waiting")
+        .map((p) => ({ identity: p.identity, name: p.name || p.identity })),
+    [participants],
+  );
 
   const speakerFocusSid = useMemo(() => {
     if (view !== "speaker") return null;
@@ -158,6 +179,14 @@ export default function Conference({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {isHost && (
+            <WaitingHostIndicator
+              waiting={waitingParticipants}
+              onAdmit={host.admit}
+              onDeny={host.remove}
+              onAdmitAll={host.admitAll}
+            />
+          )}
           <RaisedHandsIndicator raised={raisedHands} />
           {isPinned && (
             <button className="link-btn" onClick={() => setPinnedSid(null)}>
@@ -166,6 +195,13 @@ export default function Conference({
           )}
           {isHost && (
             <div className="host-bar">
+              <button
+                className={`ctrl-btn${waitingEnabled ? " active" : ""}`}
+                title="Waiting room"
+                onClick={() => (waitingEnabled ? host.disableWaiting() : host.enableWaiting())}
+              >
+                ⧗ Waiting
+              </button>
               <button
                 className={`ctrl-btn${locked ? " active" : ""}`}
                 onClick={() => (locked ? host.unlock() : host.lock())}

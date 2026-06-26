@@ -10,7 +10,7 @@
 import { AccessToken, RoomServiceClient, TrackSource } from "livekit-server-sdk";
 import { getConfig } from "@/lib/config";
 
-export type Role = "host" | "guest";
+export type Role = "host" | "guest" | "waiting";
 
 let roomService: RoomServiceClient | null = null;
 
@@ -56,6 +56,9 @@ export async function createParticipantToken(
   const { livekit } = getConfig();
 
   const identity = `${displayName}__${crypto.randomUUID().slice(0, 8)}`;
+  // A waiting participant is connected but isolated: can't publish, subscribe, or send
+  // data until the host admits them (which upgrades these via updateParticipant).
+  const active = role !== "waiting";
 
   const at = new AccessToken(livekit.apiKey, livekit.apiSecret, {
     identity,
@@ -67,14 +70,40 @@ export async function createParticipantToken(
   at.addGrant({
     roomJoin: true,
     room,
-    canPublish: true,
-    canSubscribe: true,
-    canPublishData: true,
+    canPublish: active,
+    canSubscribe: active,
+    canPublishData: active,
     // Required for participants to set their own attributes (raise-hand state, M4).
-    canUpdateOwnMetadata: true,
+    canUpdateOwnMetadata: active,
   });
 
   return at.toJwt();
+}
+
+/** Admit a waiting participant: grant publish/subscribe and flip their role to guest. */
+export async function admitParticipant(room: string, identity: string): Promise<void> {
+  await getRoomService().updateParticipant(
+    room,
+    identity,
+    JSON.stringify({ role: "guest" }),
+    { canPublish: true, canSubscribe: true, canPublishData: true, canUpdateMetadata: true },
+  );
+}
+
+/** Admit everyone currently waiting in the room. */
+export async function admitAllWaiting(room: string): Promise<void> {
+  const participants = await getRoomService().listParticipants(room);
+  await Promise.all(
+    participants
+      .filter((p) => {
+        try {
+          return JSON.parse(p.metadata || "{}").role === "waiting";
+        } catch {
+          return false;
+        }
+      })
+      .map((p) => admitParticipant(room, p.identity).catch(() => undefined)),
+  );
 }
 
 // --- Host admin actions (server-authoritative; callers must be verified hosts) ---
@@ -115,12 +144,15 @@ export async function removeParticipant(room: string, identity: string): Promise
   await getRoomService().removeParticipant(room, identity);
 }
 
-/** Reflect lock state in LiveKit room metadata so connected clients see it live. */
-export async function setRoomMetadataLocked(room: string, locked: boolean): Promise<void> {
+/** Reflect room flags (lock, waiting room) in LiveKit metadata so clients see them live. */
+export async function setRoomMetadata(
+  room: string,
+  flags: { locked: boolean; waitingEnabled: boolean },
+): Promise<void> {
   try {
-    await getRoomService().updateRoomMetadata(room, JSON.stringify({ locked }));
+    await getRoomService().updateRoomMetadata(room, JSON.stringify(flags));
   } catch {
-    // Room may not exist in LiveKit yet (nobody joined) — DB lock state still applies.
+    // Room may not exist in LiveKit yet (nobody joined) — DB state still applies.
   }
 }
 

@@ -15,13 +15,12 @@ const CopyIcon = () => (
   </svg>
 );
 
-/** Read a participant's role from its metadata ({"role":"host"|"guest"}). */
-function isHostParticipant(metadata: string | undefined): boolean {
-  if (!metadata) return false;
+/** Read a participant's role from its metadata ({"role": ...}). */
+function roleOf(metadata: string | undefined): string {
   try {
-    return JSON.parse(metadata).role === "host";
+    return JSON.parse(metadata || "{}").role ?? "guest";
   } catch {
-    return false;
+    return "guest";
   }
 }
 
@@ -69,7 +68,9 @@ export default function RoomPill({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
 
-  const sorted = [...participants].sort((a, b) => {
+  // Waiting participants are shown to the host in a separate panel, not the main roster.
+  const active = participants.filter((p) => roleOf(p.metadata) !== "waiting");
+  const sorted = [...active].sort((a, b) => {
     if (a.isLocal) return -1;
     if (b.isLocal) return 1;
     return (a.name || a.identity).localeCompare(b.name || b.identity);
@@ -95,15 +96,15 @@ export default function RoomPill({
           aria-label="Show participants"
         >
           <PeopleIcon />
-          {participants.length}
+          {active.length}
         </button>
 
         {open && (
           <div className="attendee-list">
-            <div className="attendee-list-head">Participants ({participants.length})</div>
+            <div className="attendee-list-head">Participants ({active.length})</div>
             <ul>
               {sorted.map((p) => {
-                const host = isHostParticipant(p.metadata);
+                const host = roleOf(p.metadata) === "host";
                 const showActions = isHost && !p.isLocal;
                 return (
                   <li key={p.sid}>

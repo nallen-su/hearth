@@ -13,10 +13,11 @@ infrastructure.
 foundation; vertical-slice call; multi-party (grid ↔ speaker, active-speaker, centered-grid,
 simulcast/adaptive/dynacast); screen share (auto-promoted, audio); chat + emoji reactions +
 raise-hand; rooms & invite links (Postgres-backed, unguessable token = join credential,
-expiry/revoke enforced, server-side participant cap). **M6 in progress:** host controls
-done (host key in localStorage = host identity; server-authoritative mute/mute-all/remove/
-stop-share/lower-hand/lock/end via `/api/host`). **Next: M6 waiting room.** Deferred: chat
-persistence (FR-16, needs server-side capture); host-transfer/co-host (FR-23, pre-accounts).
+expiry/revoke enforced, server-side participant cap); waiting room & host controls (host
+key in localStorage = host identity; server-authoritative mute/mute-all/remove/stop-share/
+lower-hand/lock/end + waiting-room admit/deny via `/api/host`; waiting joiners connect with
+no publish/subscribe until admitted). **Next: M7** — virtual background / blur. Deferred:
+chat persistence (FR-16, needs server-side capture); host-transfer/co-host (FR-23, pre-accounts).
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -96,8 +97,10 @@ src/
     globals.css              # neutral design tokens + shared primitives (theming = v2)
     room/[token]/            # [token] is the invite token (the shareable join credential)
       page.tsx               # server: resolves invite token -> room (or invalid-link msg)
-      RoomClient.tsx         # client: PreJoin lobby -> LiveKitRoom (stable Room, simulcast)
-      Conference.tsx         # in-room layout: grid ↔ speaker, screen-share stage, M4 controls
+      RoomClient.tsx         # client: PreJoin -> LiveKitRoom -> WaitingRoom -> Conference
+      WaitingRoom.tsx        # waiting gate (guest holding screen) + host admit indicator
+      Conference.tsx         # in-room layout: grid ↔ speaker, screen-share stage, controls
+      useHostActions.ts      # client hook -> POST /api/host (server-authoritative)
       CenteredGridLayout.tsx # grid that centers an incomplete last row (LiveKit sizing hooks)
       ChatPanel.tsx          # side chat panel (LiveKit Chat prefab; ephemeral in v1)
       Reactions.tsx          # emoji reactions over data channel + floating overlay

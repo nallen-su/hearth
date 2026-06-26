@@ -13,6 +13,7 @@ export interface Room {
   name: string | null;
   maxParticipants: number;
   locked: boolean;
+  waitingEnabled: boolean;
 }
 
 /** Unguessable invite token (~22 url-safe chars). */
@@ -62,7 +63,11 @@ export async function createRoom(opts: { name?: string } = {}): Promise<{
         token,
         roomId,
       ]);
-      return { room: { id: roomId, slug, name, maxParticipants, locked: false }, token, hostKey };
+      return {
+        room: { id: roomId, slug, name, maxParticipants, locked: false, waitingEnabled: false },
+        token,
+        hostKey,
+      };
     } catch (err) {
       // 23505 = unique_violation (slug collision) — retry with a new slug.
       if ((err as { code?: string }).code === "23505" && attempt < 2) continue;
@@ -84,11 +89,12 @@ export async function resolveInvite(token: string): Promise<InviteResolution> {
     name: string | null;
     max_participants: number;
     locked: boolean;
+    waiting_enabled: boolean;
     ended_at: Date | null;
     expires_at: Date | null;
     revoked_at: Date | null;
   }>(
-    `SELECT r.id, r.slug, r.name, r.max_participants, r.locked, r.ended_at,
+    `SELECT r.id, r.slug, r.name, r.max_participants, r.locked, r.waiting_enabled, r.ended_at,
             l.expires_at, l.revoked_at
        FROM invite_links l JOIN rooms r ON r.id = l.room_id
       WHERE l.token = $1`,
@@ -111,6 +117,7 @@ export async function resolveInvite(token: string): Promise<InviteResolution> {
       name: row.name,
       maxParticipants: row.max_participants,
       locked: row.locked,
+      waitingEnabled: row.waiting_enabled,
     },
   };
 }
@@ -128,9 +135,10 @@ export async function verifyHost(token: string, hostKey: string): Promise<Room |
     name: string | null;
     max_participants: number;
     locked: boolean;
+    waiting_enabled: boolean;
     host_key: string | null;
   }>(
-    `SELECT r.id, r.slug, r.name, r.max_participants, r.locked, r.host_key
+    `SELECT r.id, r.slug, r.name, r.max_participants, r.locked, r.waiting_enabled, r.host_key
        FROM invite_links l JOIN rooms r ON r.id = l.room_id
       WHERE l.token = $1`,
     [token],
@@ -143,11 +151,16 @@ export async function verifyHost(token: string, hostKey: string): Promise<Room |
     name: row.name,
     maxParticipants: row.max_participants,
     locked: row.locked,
+    waitingEnabled: row.waiting_enabled,
   };
 }
 
 export async function setRoomLocked(roomId: string, locked: boolean): Promise<void> {
   await getPool().query(`UPDATE rooms SET locked = $2 WHERE id = $1`, [roomId, locked]);
+}
+
+export async function setWaitingEnabled(roomId: string, enabled: boolean): Promise<void> {
+  await getPool().query(`UPDATE rooms SET waiting_enabled = $2 WHERE id = $1`, [roomId, enabled]);
 }
 
 export async function markRoomEnded(roomId: string): Promise<void> {

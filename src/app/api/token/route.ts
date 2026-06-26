@@ -52,9 +52,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Non-hosts enter the waiting room when it's enabled (FR-20).
+  const waiting = !isHost && room.waitingEnabled;
+  const role = isHost ? "host" : waiting ? "waiting" : "guest";
+
   try {
-    const token = await createParticipantToken(room.slug, username, isHost ? "host" : "guest");
-    return NextResponse.json({ token, roomName: room.name ?? room.slug, isHost });
+    const token = await createParticipantToken(room.slug, username, role);
+    return NextResponse.json({ token, roomName: room.name ?? room.slug, isHost, waiting });
   } catch (err) {
     console.error("[token] failed to mint access token:", err);
     return NextResponse.json({ error: "Failed to create access token." }, { status: 500 });

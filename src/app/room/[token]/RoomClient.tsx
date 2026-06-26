@@ -6,6 +6,7 @@ import { LiveKitRoom, PreJoin, type LocalUserChoices } from "@livekit/components
 import { Room, VideoPresets, type RoomOptions } from "livekit-client";
 import "@livekit/components-styles";
 import Conference from "./Conference";
+import WaitingRoom from "./WaitingRoom";
 
 // Public URL the browser dials. NEXT_PUBLIC_* is inlined at build; fall back to the
 // local dev LiveKit so the app works before .env is fully populated.
@@ -13,7 +14,13 @@ const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL ?? "ws://localhost:7880"
 
 type Stage =
   | { status: "prejoin" }
-  | { status: "connecting"; choices: LocalUserChoices; token: string; isHost: boolean }
+  | {
+      status: "connecting";
+      choices: LocalUserChoices;
+      token: string;
+      isHost: boolean;
+      waiting: boolean;
+    }
   | { status: "error"; message: string };
 
 export default function RoomClient({
@@ -44,7 +51,13 @@ export default function RoomClient({
         const res = await fetch(`/api/token?${params.toString()}`);
         const body = await res.json();
         if (!res.ok) throw new Error(body.error ?? "Failed to get access token.");
-        setStage({ status: "connecting", choices, token: body.token, isHost: Boolean(body.isHost) });
+        setStage({
+          status: "connecting",
+          choices,
+          token: body.token,
+          isHost: Boolean(body.isHost),
+          waiting: Boolean(body.waiting),
+        });
       } catch (err) {
         setStage({ status: "error", message: (err as Error).message });
       }
@@ -90,6 +103,7 @@ export default function RoomClient({
       inviteToken={inviteToken}
       hostKey={stage.isHost ? hostKey : null}
       isHost={stage.isHost}
+      waiting={stage.waiting}
       token={stage.token}
       choices={stage.choices}
       onLeave={() => setStage({ status: "prejoin" })}
@@ -103,6 +117,7 @@ function MeetingRoom({
   inviteToken,
   hostKey,
   isHost,
+  waiting,
   token,
   choices,
   onLeave,
@@ -112,6 +127,7 @@ function MeetingRoom({
   inviteToken: string;
   hostKey: string | null;
   isHost: boolean;
+  waiting: boolean;
   token: string;
   choices: LocalUserChoices;
   onLeave: () => void;
@@ -153,8 +169,9 @@ function MeetingRoom({
       token={token}
       serverUrl={LIVEKIT_URL}
       connect
-      video={choices.videoEnabled}
-      audio={choices.audioEnabled}
+      // While waiting, don't publish camera/mic (we lack permission until admitted).
+      video={waiting ? false : choices.videoEnabled}
+      audio={waiting ? false : choices.audioEnabled}
       data-lk-theme="default"
       style={{ height: "100vh" }}
       onDisconnected={() => {
@@ -163,12 +180,14 @@ function MeetingRoom({
       }}
       onError={(err) => onError(err.message)}
     >
-      <Conference
-        roomName={roomName}
-        inviteToken={inviteToken}
-        hostKey={hostKey}
-        isHost={isHost}
-      />
+      <WaitingRoom waiting={waiting} choices={choices} roomName={roomName}>
+        <Conference
+          roomName={roomName}
+          inviteToken={inviteToken}
+          hostKey={hostKey}
+          isHost={isHost}
+        />
+      </WaitingRoom>
     </LiveKitRoom>
   );
 }

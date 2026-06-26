@@ -1,25 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyHost, setRoomLocked, markRoomEnded } from "@/lib/rooms";
+import { verifyHost, setRoomLocked, setWaitingEnabled, markRoomEnded } from "@/lib/rooms";
 import {
   muteParticipantMic,
   muteEveryoneExcept,
   stopParticipantShare,
   removeParticipant,
-  setRoomMetadataLocked,
+  admitParticipant,
+  admitAllWaiting,
+  setRoomMetadata,
   endRoom,
 } from "@/lib/livekit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Action = "mute" | "mute_all" | "remove" | "stop_share" | "lock" | "unlock" | "end";
+type Action =
+  | "mute"
+  | "mute_all"
+  | "remove"
+  | "stop_share"
+  | "lock"
+  | "unlock"
+  | "end"
+  | "admit"
+  | "admit_all"
+  | "enable_waiting"
+  | "disable_waiting";
 
 /**
  * POST /api/host  { invite, hostKey, action, targetIdentity? }
  *
- * Server-authoritative host controls (FR-21/22). The host key is verified against the
- * room before any LiveKit admin action runs — the client's asserted role is never
- * trusted. `mute_all` excludes the host's own identity (targetIdentity).
+ * Server-authoritative host controls (FR-20/21/22). The host key is verified against the
+ * room before any LiveKit admin action runs — the client's asserted role is never trusted.
  */
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
@@ -42,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authorized." }, { status: 403 });
   }
 
-  const needsTarget: Action[] = ["mute", "remove", "stop_share"];
+  const needsTarget: Action[] = ["mute", "remove", "stop_share", "admit"];
   if (needsTarget.includes(action) && !targetIdentity) {
     return NextResponse.json({ error: "targetIdentity is required." }, { status: 400 });
   }
@@ -62,11 +74,26 @@ export async function POST(req: NextRequest) {
       case "stop_share":
         await stopParticipantShare(room.slug, targetIdentity!);
         break;
-      case "lock":
-      case "unlock":
-        await setRoomLocked(room.id, action === "lock");
-        await setRoomMetadataLocked(room.slug, action === "lock");
+      case "admit":
+        await admitParticipant(room.slug, targetIdentity!);
         break;
+      case "admit_all":
+        await admitAllWaiting(room.slug);
+        break;
+      case "lock":
+      case "unlock": {
+        const locked = action === "lock";
+        await setRoomLocked(room.id, locked);
+        await setRoomMetadata(room.slug, { locked, waitingEnabled: room.waitingEnabled });
+        break;
+      }
+      case "enable_waiting":
+      case "disable_waiting": {
+        const enabled = action === "enable_waiting";
+        await setWaitingEnabled(room.id, enabled);
+        await setRoomMetadata(room.slug, { locked: room.locked, waitingEnabled: enabled });
+        break;
+      }
       case "end":
         await markRoomEnded(room.id);
         await endRoom(room.slug);

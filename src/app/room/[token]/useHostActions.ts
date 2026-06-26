@@ -32,5 +32,9 @@ export function useHostActions(inviteToken: string, hostKey: string | null) {
     lock: () => call("lock"),
     unlock: () => call("unlock"),
     end: () => call("end"),
+    admit: (identity: string) => call("admit", identity),
+    admitAll: () => call("admit_all"),
+    enableWaiting: () => call("enable_waiting"),
+    disableWaiting: () => call("disable_waiting"),
   };
 }
