@@ -58,7 +58,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const token = await createParticipantToken(room.slug, username, role);
-    return NextResponse.json({ token, roomName: room.name ?? room.slug, isHost, waiting });
+    // Initial flags so the UI is correct before any host action writes room metadata.
+    return NextResponse.json({
+      token,
+      roomName: room.name ?? room.slug,
+      isHost,
+      waiting,
+      locked: room.locked,
+      waitingEnabled: room.waitingEnabled,
+    });
   } catch (err) {
     console.error("[token] failed to mint access token:", err);
     return NextResponse.json({ error: "Failed to create access token." }, { status: 500 });

@@ -20,6 +20,8 @@ type Stage =
       token: string;
       isHost: boolean;
       waiting: boolean;
+      initialLocked: boolean;
+      initialWaitingEnabled: boolean;
     }
   | { status: "error"; message: string };
 
@@ -57,6 +59,8 @@ export default function RoomClient({
           token: body.token,
           isHost: Boolean(body.isHost),
           waiting: Boolean(body.waiting),
+          initialLocked: Boolean(body.locked),
+          initialWaitingEnabled: Boolean(body.waitingEnabled),
         });
       } catch (err) {
         setStage({ status: "error", message: (err as Error).message });
@@ -104,6 +108,8 @@ export default function RoomClient({
       hostKey={stage.isHost ? hostKey : null}
       isHost={stage.isHost}
       waiting={stage.waiting}
+      initialLocked={stage.initialLocked}
+      initialWaitingEnabled={stage.initialWaitingEnabled}
       token={stage.token}
       choices={stage.choices}
       onLeave={() => setStage({ status: "prejoin" })}
@@ -118,6 +124,8 @@ function MeetingRoom({
   hostKey,
   isHost,
   waiting,
+  initialLocked,
+  initialWaitingEnabled,
   token,
   choices,
   onLeave,
@@ -128,6 +136,8 @@ function MeetingRoom({
   hostKey: string | null;
   isHost: boolean;
   waiting: boolean;
+  initialLocked: boolean;
+  initialWaitingEnabled: boolean;
   token: string;
   choices: LocalUserChoices;
   onLeave: () => void;
@@ -186,6 +196,8 @@ function MeetingRoom({
           inviteToken={inviteToken}
           hostKey={hostKey}
           isHost={isHost}
+          initialLocked={initialLocked}
+          initialWaitingEnabled={initialWaitingEnabled}
         />
       </WaitingRoom>
     </LiveKitRoom>

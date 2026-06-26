@@ -52,11 +52,15 @@ export default function Conference({
   inviteToken,
   hostKey,
   isHost,
+  initialLocked,
+  initialWaitingEnabled,
 }: {
   roomName: string;
   inviteToken: string;
   hostKey: string | null;
   isHost: boolean;
+  initialLocked: boolean;
+  initialWaitingEnabled: boolean;
 }) {
   const [view, setView] = useState<View>("grid");
   const [pinnedSid, setPinnedSid] = useState<string | null>(null);
@@ -97,16 +101,22 @@ export default function Conference({
     [sendHostCmd],
   );
 
-  // Lock + waiting-room state live in LiveKit room metadata so every client sees it live.
+  // Lock + waiting-room state live in LiveKit room metadata once a host action writes it,
+  // so changes propagate to every client. Until then (e.g. a meeting created with the
+  // waiting room already on) we fall back to the initial flags from the token response.
   const roomInfo = useRoomInfo();
   const { locked, waitingEnabled } = useMemo(() => {
+    let m: Record<string, unknown> = {};
     try {
-      const m = JSON.parse(roomInfo.metadata || "{}");
-      return { locked: Boolean(m.locked), waitingEnabled: Boolean(m.waitingEnabled) };
+      m = JSON.parse(roomInfo.metadata || "{}");
     } catch {
-      return { locked: false, waitingEnabled: false };
+      /* no metadata yet */
     }
-  }, [roomInfo.metadata]);
+    return {
+      locked: "locked" in m ? Boolean(m.locked) : initialLocked,
+      waitingEnabled: "waitingEnabled" in m ? Boolean(m.waitingEnabled) : initialWaitingEnabled,
+    };
+  }, [roomInfo.metadata, initialLocked, initialWaitingEnabled]);
 
   // Unread chat badge: useChat shares the room's message buffer with the Chat prefab.
   const { chatMessages } = useChat();
@@ -197,10 +207,14 @@ export default function Conference({
             <div className="host-bar">
               <button
                 className={`ctrl-btn${waitingEnabled ? " active" : ""}`}
-                title="Waiting room"
+                title={
+                  waitingEnabled
+                    ? "Guests must be admitted before joining. Click to let guests in automatically."
+                    : "Guests join automatically. Click to require admitting them first."
+                }
                 onClick={() => (waitingEnabled ? host.disableWaiting() : host.enableWaiting())}
               >
-                ⧗ Waiting
+                ⧗ Waiting room: {waitingEnabled ? "On" : "Off"}
               </button>
               <button
                 className={`ctrl-btn${locked ? " active" : ""}`}

@@ -12,9 +12,11 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   let name: string | undefined;
+  let waitingEnabled = false;
   try {
     const body = await req.json().catch(() => ({}));
     if (typeof body?.name === "string") name = body.name;
+    waitingEnabled = Boolean(body?.waitingEnabled);
   } catch {
     /* empty/invalid body is fine — treated as an instant meeting */
   }
@@ -24,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { token, hostKey, room } = await createRoom({ name });
+    const { token, hostKey, room } = await createRoom({ name, waitingEnabled });
     // hostKey is returned once to the creator; the client stores it locally and uses it
     // to authorize host controls. It is never part of the shareable invite link.
     return NextResponse.json(

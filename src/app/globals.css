@@ -83,6 +83,24 @@ a {
   color: var(--color-text-muted);
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  text-align: left;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.checkbox-row input {
+  margin-top: 0.2rem;
+  accent-color: var(--color-accent);
+}
+.checkbox-row small {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
 /* In-room shell (M2): topbar + body + controls, vertical stack filling the viewport. */
 .room-shell {
   height: 100vh;

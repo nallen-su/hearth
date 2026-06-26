@@ -39,7 +39,9 @@ function generateSlug(name?: string): string {
  * Create a room (instant if no name, named otherwise) plus its first invite link.
  * Retries once on the unlikely slug collision.
  */
-export async function createRoom(opts: { name?: string } = {}): Promise<{
+export async function createRoom(
+  opts: { name?: string; waitingEnabled?: boolean } = {},
+): Promise<{
   room: Room;
   token: string;
   hostKey: string;
@@ -47,15 +49,16 @@ export async function createRoom(opts: { name?: string } = {}): Promise<{
   const pool = getPool();
   const maxParticipants = getConfig().meeting.maxParticipants;
   const name = opts.name?.trim() || null;
+  const waitingEnabled = Boolean(opts.waitingEnabled);
   const hostKey = generateToken();
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const slug = generateSlug(name ?? undefined);
     try {
       const { rows } = await pool.query<{ id: string }>(
-        `INSERT INTO rooms (slug, name, max_participants, host_key)
-         VALUES ($1, $2, $3, $4) RETURNING id`,
-        [slug, name, maxParticipants, hostKey],
+        `INSERT INTO rooms (slug, name, max_participants, host_key, waiting_enabled)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [slug, name, maxParticipants, hostKey, waitingEnabled],
       );
       const roomId = rows[0]!.id;
       const token = generateToken();
@@ -64,7 +67,7 @@ export async function createRoom(opts: { name?: string } = {}): Promise<{
         roomId,
       ]);
       return {
-        room: { id: roomId, slug, name, maxParticipants, locked: false, waitingEnabled: false },
+        room: { id: roomId, slug, name, maxParticipants, locked: false, waitingEnabled },
         token,
         hostKey,
       };

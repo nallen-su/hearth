@@ -20,6 +20,7 @@ function parseInviteToken(input: string): string | null {
 export default function JoinForm() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [waitingEnabled, setWaitingEnabled] = useState(false);
   const [linkInput, setLinkInput] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export default function JoinForm() {
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim() || undefined }),
+        body: JSON.stringify({ name: name.trim() || undefined, waitingEnabled }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Couldn’t create the meeting.");
@@ -66,6 +67,17 @@ export default function JoinForm() {
         aria-label="Meeting name"
         maxLength={80}
       />
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={waitingEnabled}
+          onChange={(e) => setWaitingEnabled(e.target.checked)}
+        />
+        <span>
+          Admit guests manually
+          <small>Guests wait until you let them in (waiting room)</small>
+        </span>
+      </label>
       <button className="btn" onClick={createMeeting} disabled={creating}>
         {creating ? "Starting…" : "Start meeting"}
       </button>
