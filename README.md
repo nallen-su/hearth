@@ -13,6 +13,22 @@ metadata stays inside the operator's infrastructure.
 Next.js (App Router) + React + TypeScript · LiveKit (self-hosted SFU) · PostgreSQL ·
 coturn (TURN) · Docker Compose. Web-only for v1.
 
+## Features so far (M0–M4)
+
+- **Multi-party calls** over a self-hosted LiveKit SFU, with simulcast, adaptive stream,
+  and dynacast for scale.
+- **Pre-join lobby** — display name, camera/mic preview, and device selection.
+- **Layouts** — responsive grid (centers an incomplete last row, paginates large rooms)
+  and a speaker view that follows the active speaker; click a tile to pin.
+- **Screen sharing** with tab/system audio, auto-promoted to the main stage.
+- **Chat** (ephemeral), **emoji reactions**, and **raise hand** with an ordered queue and
+  a per-tile badge.
+- **In-call device switching** (camera / mic / speaker) and a room pill with the attendee
+  roster + copy-link.
+- **Guest join** via a room link — no account needed.
+
+Targets latest Chrome / Edge / Firefox / Safari (desktop).
+
 ## Local development
 
 Prerequisites: **Node 22 LTS** (see `.nvmrc` — run `nvm use`), **Docker** (with Compose).
@@ -51,6 +67,15 @@ http://localhost:3000/api/health.
 
 ## Project status
 
-Pre-v1, built milestone by milestone (see the implementation plan). **M0 (foundation)**
-is in place: project scaffold, local infra, config, DB migration tooling, and a health
-endpoint.
+Built milestone by milestone (see the [implementation plan](IMPLEMENTATION_PLAN.md)).
+**M0–M4 complete:** foundation & infra; a working LiveKit call; multi-party layouts;
+screen sharing; chat, reactions & raise hand. **Next: M5** — rooms & invite links
+(Postgres-backed rooms, expiring/revocable links, participant caps).
+
+### Testing a call across machines
+
+For same-machine testing, two browser tabs/profiles work out of the box. To try a call
+from another device (e.g. on your LAN), set `rtc.node_ip` in `livekit/livekit.yaml` to
+your machine's LAN IP and restart LiveKit (`docker compose restart livekit`) — otherwise
+the SFU advertises `127.0.0.1`, which only the local machine can reach. Browsers also
+require HTTPS for camera/mic access on any non-`localhost` origin.
