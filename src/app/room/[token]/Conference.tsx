@@ -134,8 +134,12 @@ export default function Conference({
     { onlySubscribed: false },
   );
 
-  const cameraTracks = tracks.filter((t) => t.source === Track.Source.Camera);
-  const screenShareTrack = tracks.find((t) => t.source === Track.Source.ScreenShare);
+  // Hide participants still in the waiting room: they're connected (so the host can
+  // admit them) but have no published tracks, so withPlaceholder would otherwise show
+  // them an empty tile. Re-evaluated on metadata change via useParticipants below.
+  const visibleTracks = tracks.filter((t) => roleOf(t.participant.metadata) !== "waiting");
+  const cameraTracks = visibleTracks.filter((t) => t.source === Track.Source.Camera);
+  const screenShareTrack = visibleTracks.find((t) => t.source === Track.Source.ScreenShare);
   const sharingIdentity = screenShareTrack?.participant.identity ?? null;
 
   const participants = useParticipants();
@@ -164,7 +168,7 @@ export default function Conference({
 
   const focusTrack = screenShareTrack ?? speakerFocusTrack;
   const carouselTracks = focusTrack
-    ? tracks.filter((t) => !isEqualTrackRef(t, focusTrack))
+    ? visibleTracks.filter((t) => !isEqualTrackRef(t, focusTrack))
     : [];
 
   const isPinned = view === "speaker" && pinnedSid !== null && !screenShareTrack;
