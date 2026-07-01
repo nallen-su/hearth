@@ -17,8 +17,11 @@ expiry/revoke enforced, server-side participant cap); waiting room & host contro
 key in localStorage = host identity; server-authoritative mute/mute-all/remove/stop-share/
 lower-hand/lock/end + waiting-room admit/deny via `/api/host`; waiting joiners connect with
 no publish/subscribe until admitted); background blur / virtual backgrounds (client-side
-MediaPipe via `@livekit/track-processors`, assets served locally — no CDN). **Next: M8** —
-admin config & operability. Deferred: chat persistence (FR-16, needs server-side capture);
+MediaPipe via `@livekit/track-processors`, assets served locally — no CDN); admin config
+& operability (env-driven meeting defaults + waiting-room default + link expiry; structured
+JSON logger; health checks DB + LiveKit; read-only `/admin` status page gated by ADMIN_KEY;
+production Dockerfile + Caddy TLS + `DEPLOY.md` single-box runbook). **Next: M9** — scale,
+load test & hardening. Deferred: chat persistence (FR-16, needs server-side capture);
 host-transfer/co-host (FR-23, pre-accounts).
 
 **Read these first — they are the source of truth:**
@@ -110,15 +113,20 @@ src/
       ChatPanel.tsx          # side chat panel (LiveKit Chat prefab; ephemeral in v1)
       Reactions.tsx          # emoji reactions over data channel + floating overlay
       RaiseHand.tsx          # raise-hand via participant attributes; ordered queue
-    api/health/route.ts      # liveness/readiness endpoint
+    admin/page.tsx           # read-only operator status page (config + health), ADMIN_KEY-gated
+    api/health/route.ts      # liveness/readiness (DB + LiveKit); JSON per-dependency status
     api/rooms/route.ts       # POST: create room (instant/named) + invite link + host key
     api/token/route.ts       # validates invite + cap + lock, mints token (role from host key)
     api/host/route.ts        # POST: host actions (mute/remove/lock/end/…); verifies host key
   lib/
     config.ts                # lazy, validated env config — getConfig(); add new env here
     db.ts                    # lazy Postgres pool — getPool(), pingDatabase()
-    livekit.ts               # token minting (createParticipantToken) + countParticipants
+    livekit.ts               # token minting + host admin actions + counts + pingLiveKit
     rooms.ts                 # rooms/invite-links data access (create/resolve/revoke)
+    logger.ts                # structured JSON logger (one line per event) — no secrets
+scripts/setup-effects.mjs    # bundle MediaPipe assets into public/mediapipe (no CDN)
+Dockerfile                   # production app image (standalone); deploy/ has prod compose + Caddy
+DEPLOY.md                    # single-box production runbook
   db/migrations/             # forward-only *.sql, applied lexically by scripts/migrate.ts
 scripts/migrate.ts           # dependency-light migration runner
 docker-compose.yml           # Postgres + LiveKit + coturn (pinned)

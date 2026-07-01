@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server";
 import { pingDatabase } from "@/lib/db";
+import { pingLiveKit } from "@/lib/livekit";
 
 // Health must reflect live state, not a build-time snapshot.
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
  * GET /api/health
- * Returns 200 when the app and its required dependencies are reachable, 503 otherwise.
- * Used by operators and container orchestration for liveness/readiness.
+ * 200 when the app and its required dependencies are reachable, 503 otherwise. Reports
+ * per-dependency status so operators (and orchestration) can see what's degraded.
+ *
+ * coturn (TURN) has no HTTP surface to probe here; observe it via container health /
+ * `docker compose ps` and by confirming calls connect from restrictive networks.
  */
 export async function GET() {
   const checks: Record<string, "ok" | "error"> = {};
 
-  try {
-    checks.database = (await pingDatabase()) ? "ok" : "error";
-  } catch {
-    checks.database = "error";
-  }
+  const [db, livekit] = await Promise.allSettled([pingDatabase(), pingLiveKit()]);
+  checks.database = db.status === "fulfilled" && db.value ? "ok" : "error";
+  checks.livekit = livekit.status === "fulfilled" && livekit.value ? "ok" : "error";
 
   const healthy = Object.values(checks).every((status) => status === "ok");
 

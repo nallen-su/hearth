@@ -47,9 +47,16 @@ export async function createRoom(
   hostKey: string;
 }> {
   const pool = getPool();
-  const maxParticipants = getConfig().meeting.maxParticipants;
+  const { meeting } = getConfig();
+  const maxParticipants = meeting.maxParticipants;
   const name = opts.name?.trim() || null;
-  const waitingEnabled = Boolean(opts.waitingEnabled);
+  // Fall back to the operator's configured default when the caller didn't specify.
+  const waitingEnabled = opts.waitingEnabled ?? meeting.waitingRoomDefault;
+  // Optional operator-configured link expiry.
+  const expiresAt =
+    meeting.linkExpiryHours > 0
+      ? new Date(Date.now() + meeting.linkExpiryHours * 3600_000)
+      : null;
   const hostKey = generateToken();
 
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -62,10 +69,10 @@ export async function createRoom(
       );
       const roomId = rows[0]!.id;
       const token = generateToken();
-      await pool.query(`INSERT INTO invite_links (token, room_id) VALUES ($1, $2)`, [
-        token,
-        roomId,
-      ]);
+      await pool.query(
+        `INSERT INTO invite_links (token, room_id, expires_at) VALUES ($1, $2, $3)`,
+        [token, roomId, expiresAt],
+      );
       return {
         room: { id: roomId, slug, name, maxParticipants, locked: false, waitingEnabled },
         token,

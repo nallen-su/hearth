@@ -1,6 +1,12 @@
 import JoinForm from "./JoinForm";
+import { getConfig } from "@/lib/config";
+
+// Reads operator config (waiting-room default) at request time, so it isn't evaluated
+// during `next build` where env isn't populated.
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
+  const waitingRoomDefault = getConfig().meeting.waitingRoomDefault;
   return (
     <main
       style={{
@@ -21,7 +27,7 @@ export default function HomePage() {
         </p>
       </div>
 
-      <JoinForm />
+      <JoinForm waitingDefault={waitingRoomDefault} />
 
       <p style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
         Service health:{" "}

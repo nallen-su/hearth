@@ -17,10 +17,10 @@ function parseInviteToken(input: string): string | null {
   }
 }
 
-export default function JoinForm() {
+export default function JoinForm({ waitingDefault = false }: { waitingDefault?: boolean }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [waitingEnabled, setWaitingEnabled] = useState(false);
+  const [waitingEnabled, setWaitingEnabled] = useState(waitingDefault);
   const [linkInput, setLinkInput] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);

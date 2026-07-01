@@ -15,7 +15,12 @@ export interface Config {
   appUrl: string;
   database: { url: string };
   livekit: { url: string; httpUrl: string; apiKey: string; apiSecret: string };
-  meeting: { maxParticipants: number };
+  meeting: {
+    maxParticipants: number;
+    waitingRoomDefault: boolean;
+    linkExpiryHours: number; // 0 = links never expire
+  };
+  admin: { key: string }; // empty = admin status page disabled
 }
 
 /** Derive the LiveKit server HTTP(S) URL (for the server SDK) from its ws(s) URL. */
@@ -56,6 +61,14 @@ export function getConfig(): Config {
     meeting: {
       // Server-enforced cap per room (FR-5). Override per-room at creation if needed.
       maxParticipants: Number(read("MAX_PARTICIPANTS", "100")),
+      // Default state of the "admit guests manually" toggle for new meetings.
+      waitingRoomDefault: read("WAITING_ROOM_DEFAULT", "false") === "true",
+      // If > 0, invite links expire this many hours after creation.
+      linkExpiryHours: Number(read("LINK_EXPIRY_HOURS", "0")),
+    },
+    admin: {
+      // Gate for the /admin status page. Unset = page disabled.
+      key: read("ADMIN_KEY", ""),
     },
   };
 

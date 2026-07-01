@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyHost, setRoomLocked, setWaitingEnabled, markRoomEnded } from "@/lib/rooms";
+import { logger } from "@/lib/logger";
 import {
   muteParticipantMic,
   muteEveryoneExcept,
@@ -101,9 +102,10 @@ export async function POST(req: NextRequest) {
       default:
         return NextResponse.json({ error: "Unknown action." }, { status: 400 });
     }
+    logger.info("host action", { room: room.slug, action });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error(`[host] action '${action}' failed:`, err);
+    logger.error("host action failed", { room: room.slug, action, err: String(err) });
     return NextResponse.json({ error: "Host action failed." }, { status: 500 });
   }
 }

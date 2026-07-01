@@ -164,3 +164,9 @@ export async function endRoom(room: string): Promise<void> {
     /* already gone */
   }
 }
+
+/** Liveness check for the LiveKit server API (health endpoint). */
+export async function pingLiveKit(): Promise<boolean> {
+  await getRoomService().listRooms();
+  return true;
+}

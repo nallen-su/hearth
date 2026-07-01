@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { countParticipants, createParticipantToken } from "@/lib/livekit";
 import { resolveInvite, verifyHost } from "@/lib/rooms";
+import { logger } from "@/lib/logger";
 
 // livekit-server-sdk + pg need the Node runtime; never run on the edge.
 export const runtime = "nodejs";
@@ -68,7 +69,7 @@ export async function GET(req: NextRequest) {
       waitingEnabled: room.waitingEnabled,
     });
   } catch (err) {
-    console.error("[token] failed to mint access token:", err);
+    logger.error("token mint failed", { room: room.slug, err: String(err) });
     return NextResponse.json({ error: "Failed to create access token." }, { status: 500 });
   }
 }
