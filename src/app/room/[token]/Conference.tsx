@@ -23,6 +23,7 @@ import HandTile from "./HandTile";
 import RoomPill from "./RoomPill";
 import ChatPanel from "./ChatPanel";
 import { ReactionBar, ReactionsOverlay, useReactions } from "./Reactions";
+import { BackgroundEffectsButton } from "./BackgroundEffects";
 import { RaiseHandButton, RaisedHandsIndicator, useRaisedHands } from "./RaiseHand";
 import { WaitingHostIndicator } from "./WaitingRoom";
 import { useHostActions } from "./useHostActions";
@@ -274,6 +275,7 @@ export default function Conference({
           controls={{ microphone: true, camera: true, screenShare: true, chat: false, leave: true }}
         />
         <ReactionBar onReact={sendReaction} />
+        <BackgroundEffectsButton />
         <RaiseHandButton raised={raisedHands} />
         <button
           className={`ctrl-btn${chatOpen ? " active" : ""}`}

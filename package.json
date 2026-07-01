@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "migrate": "tsx scripts/migrate.ts",
+    "setup:effects": "node scripts/setup-effects.mjs",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f"
@@ -17,6 +18,7 @@
   "dependencies": {
     "@livekit/components-react": "^2.9.21",
     "@livekit/components-styles": "^1.2.0",
+    "@livekit/track-processors": "^0.7.2",
     "livekit-client": "^2.20.0",
     "livekit-server-sdk": "^2.15.5",
     "next": "14.2.35",

@@ -27,3 +27,7 @@ npm-debug.log*
 
 # local Claude Code settings (personal/machine-specific)
 .claude/settings.local.json
+
+# Background-effects assets — populated by `npm run setup:effects` (large wasm),
+# served locally so nothing loads from a CDN at runtime.
+/public/mediapipe/

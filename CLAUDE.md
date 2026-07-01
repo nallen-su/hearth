@@ -16,8 +16,10 @@ raise-hand; rooms & invite links (Postgres-backed, unguessable token = join cred
 expiry/revoke enforced, server-side participant cap); waiting room & host controls (host
 key in localStorage = host identity; server-authoritative mute/mute-all/remove/stop-share/
 lower-hand/lock/end + waiting-room admit/deny via `/api/host`; waiting joiners connect with
-no publish/subscribe until admitted). **Next: M7** — virtual background / blur. Deferred:
-chat persistence (FR-16, needs server-side capture); host-transfer/co-host (FR-23, pre-accounts).
+no publish/subscribe until admitted); background blur / virtual backgrounds (client-side
+MediaPipe via `@livekit/track-processors`, assets served locally — no CDN). **Next: M8** —
+admin config & operability. Deferred: chat persistence (FR-16, needs server-side capture);
+host-transfer/co-host (FR-23, pre-accounts).
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -80,6 +82,8 @@ First-time setup: `cp .env.example .env && npm install`.
 - `npm run infra:up` / `infra:down` / `infra:logs` — start/stop/tail Docker services
   (Postgres, LiveKit, coturn) via `docker-compose.yml`.
 - `npm run migrate` — apply pending SQL migrations (forward-only runner in `scripts/migrate.ts`).
+- `npm run setup:effects` — populate `public/mediapipe/` (blur/background assets) locally,
+  so nothing loads from a CDN at runtime. Run once after `npm install`.
 - `npm run dev` — Next.js dev server on :3000 (app runs on host, not in Docker, during dev).
 - `npm run build` / `npm start` — production build / serve (`output: "standalone"`).
 - `npm run lint` / `npm run typecheck` — quality gates; run both before declaring done.
@@ -102,6 +106,7 @@ src/
       Conference.tsx         # in-room layout: grid ↔ speaker, screen-share stage, controls
       useHostActions.ts      # client hook -> POST /api/host (server-authoritative)
       CenteredGridLayout.tsx # grid that centers an incomplete last row (LiveKit sizing hooks)
+      BackgroundEffects.tsx  # blur / virtual-background control (track-processors, local assets)
       ChatPanel.tsx          # side chat panel (LiveKit Chat prefab; ephemeral in v1)
       Reactions.tsx          # emoji reactions over data channel + floating overlay
       RaiseHand.tsx          # raise-hand via participant attributes; ordered queue

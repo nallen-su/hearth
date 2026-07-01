@@ -23,6 +23,8 @@ coturn (TURN) · Docker Compose. Web-only for v1.
 - **Screen sharing** with tab/system audio, auto-promoted to the main stage.
 - **Chat** (ephemeral), **emoji reactions**, and **raise hand** with an ordered queue and
   a per-tile badge.
+- **Background blur / virtual backgrounds** (client-side, MediaPipe), with all assets
+  served locally — no third-party CDN.
 - **In-call device switching** (camera / mic / speaker) and a room pill with the attendee
   roster + copy-link.
 - **Guest join** via a room link — no account needed.
@@ -39,6 +41,10 @@ cp .env.example .env
 
 # 2. Install dependencies
 npm install
+
+# 2b. Fetch background-effects assets locally (blur/virtual backgrounds).
+#     One-time; keeps MediaPipe assets on your own origin, never a CDN.
+npm run setup:effects
 
 # 3. Start backing services (Postgres, LiveKit, coturn)
 npm run infra:up
@@ -68,9 +74,10 @@ http://localhost:3000/api/health.
 ## Project status
 
 Built milestone by milestone (see the [implementation plan](IMPLEMENTATION_PLAN.md)).
-**M0–M4 complete:** foundation & infra; a working LiveKit call; multi-party layouts;
-screen sharing; chat, reactions & raise hand. **Next: M5** — rooms & invite links
-(Postgres-backed rooms, expiring/revocable links, participant caps).
+**M0–M7 complete:** foundation & infra; a working LiveKit call; multi-party layouts;
+screen sharing; chat/reactions/raise-hand; rooms & invite links; waiting room & host
+controls; background blur / virtual backgrounds. **Next: M8** — admin config &
+operability.
 
 ### Testing a call across machines
 

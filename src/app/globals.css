@@ -494,6 +494,26 @@ a {
 .reaction-popover button:hover {
   background: var(--color-border);
 }
+
+/* Background-effects menu (text options, vertical) */
+.effects-popover {
+  flex-direction: column;
+  gap: 0.1rem;
+  border-radius: var(--radius);
+  padding: 0.3rem;
+  min-width: 130px;
+}
+.effects-popover button {
+  font-size: 0.85rem;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  color: var(--color-text);
+}
+.effects-popover button.active {
+  background: var(--color-accent);
+  color: #fff;
+}
 .reactions-overlay {
   position: absolute;
   inset: 0;
