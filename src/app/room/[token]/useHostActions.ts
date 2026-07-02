@@ -36,5 +36,7 @@ export function useHostActions(inviteToken: string, hostKey: string | null) {
     admitAll: () => call("admit_all"),
     enableWaiting: () => call("enable_waiting"),
     disableWaiting: () => call("disable_waiting"),
+    promote: (identity: string) => call("promote", identity),
+    demote: (identity: string) => call("demote", identity),
   };
 }

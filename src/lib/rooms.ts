@@ -154,8 +154,9 @@ export async function verifyHost(token: string, hostKey: string): Promise<Room |
     [token],
   );
   const row = rows[0];
-  if (!row || !row.host_key || row.host_key !== hostKey) return null;
-  return {
+  if (!row) return null;
+
+  const room: Room = {
     id: row.id,
     slug: row.slug,
     name: row.name,
@@ -163,6 +164,36 @@ export async function verifyHost(token: string, hostKey: string): Promise<Room |
     locked: row.locked,
     waitingEnabled: row.waiting_enabled,
   };
+
+  // Primary host key (room creator / host link).
+  if (row.host_key && row.host_key === hostKey) return room;
+
+  // Or a non-revoked co-host key (FR-23).
+  const coHost = await getPool().query(
+    `SELECT 1 FROM host_keys WHERE room_id = $1 AND key = $2 AND revoked_at IS NULL`,
+    [row.id, hostKey],
+  );
+  return (coHost.rowCount ?? 0) > 0 ? room : null;
+}
+
+/** Mint a co-host key for a participant identity (FR-23). Returns the new key. */
+export async function addCoHostKey(roomId: string, identity: string): Promise<string> {
+  const key = generateToken();
+  await getPool().query(
+    `INSERT INTO host_keys (key, room_id, identity) VALUES ($1, $2, $3)`,
+    [key, roomId, identity],
+  );
+  return key;
+}
+
+/** Revoke a participant's co-host key(s). Returns how many were revoked (0 = not a co-host). */
+export async function revokeCoHost(roomId: string, identity: string): Promise<number> {
+  const { rowCount } = await getPool().query(
+    `UPDATE host_keys SET revoked_at = now()
+      WHERE room_id = $1 AND identity = $2 AND revoked_at IS NULL`,
+    [roomId, identity],
+  );
+  return rowCount ?? 0;
 }
 
 export async function setRoomLocked(roomId: string, locked: boolean): Promise<void> {

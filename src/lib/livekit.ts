@@ -7,7 +7,7 @@
  * v1 grants every joiner publish + subscribe rights; per-role permissions (host vs.
  * guest, server-authoritative controls) arrive with M6.
  */
-import { AccessToken, RoomServiceClient, TrackSource } from "livekit-server-sdk";
+import { AccessToken, DataPacket_Kind, RoomServiceClient, TrackSource } from "livekit-server-sdk";
 import { getConfig } from "@/lib/config";
 
 export type Role = "host" | "guest" | "waiting";
@@ -169,4 +169,25 @@ export async function endRoom(room: string): Promise<void> {
 export async function pingLiveKit(): Promise<boolean> {
   await getRoomService().listRooms();
   return true;
+}
+
+/** Set a participant's role in their LiveKit metadata (host badge / client role, FR-23). */
+export async function setParticipantRole(room: string, identity: string, role: Role): Promise<void> {
+  await getRoomService().updateParticipant(room, identity, JSON.stringify({ role }));
+}
+
+/**
+ * Deliver a co-host grant/revoke to a single participant over the data channel. The
+ * grant carries the co-host key (server-minted); only the target identity receives it.
+ */
+export async function sendHostRole(
+  room: string,
+  identity: string,
+  payload: { type: "grant"; key: string } | { type: "revoke" },
+): Promise<void> {
+  const data = new TextEncoder().encode(JSON.stringify(payload));
+  await getRoomService().sendData(room, data, DataPacket_Kind.RELIABLE, {
+    destinationIdentities: [identity],
+    topic: "host_role",
+  });
 }

@@ -34,6 +34,8 @@ interface HostControls {
   onStopShare: (identity: string) => void;
   onRemove: (identity: string) => void;
   onMuteAll: () => void;
+  onPromote: (identity: string) => void;
+  onDemote: (identity: string) => void;
 }
 
 /**
@@ -51,6 +53,8 @@ export default function RoomPill({
   onStopShare,
   onRemove,
   onMuteAll,
+  onPromote,
+  onDemote,
 }: { roomName: string } & HostControls) {
   const participants = useParticipants();
   const [open, setOpen] = useState(false);
@@ -112,6 +116,15 @@ export default function RoomPill({
                         {sharingIdentity === p.identity && (
                           <button title="Stop screen share" onClick={() => onStopShare(p.identity)}>
                             ⊘
+                          </button>
+                        )}
+                        {host ? (
+                          <button title="Remove co-host" onClick={() => onDemote(p.identity)}>
+                            ★
+                          </button>
+                        ) : (
+                          <button title="Make co-host" onClick={() => onPromote(p.identity)}>
+                            ☆
                           </button>
                         )}
                         <button title="Mute" onClick={() => onMute(p.identity)}>

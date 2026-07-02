@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyHost, setRoomLocked, setWaitingEnabled, markRoomEnded } from "@/lib/rooms";
+import {
+  verifyHost,
+  setRoomLocked,
+  setWaitingEnabled,
+  markRoomEnded,
+  addCoHostKey,
+  revokeCoHost,
+} from "@/lib/rooms";
 import { logger } from "@/lib/logger";
 import {
   muteParticipantMic,
@@ -8,6 +15,8 @@ import {
   removeParticipant,
   admitParticipant,
   admitAllWaiting,
+  setParticipantRole,
+  sendHostRole,
   setRoomMetadata,
   endRoom,
 } from "@/lib/livekit";
@@ -26,7 +35,9 @@ type Action =
   | "admit"
   | "admit_all"
   | "enable_waiting"
-  | "disable_waiting";
+  | "disable_waiting"
+  | "promote"
+  | "demote";
 
 /**
  * POST /api/host  { invite, hostKey, action, targetIdentity? }
@@ -55,7 +66,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not authorized." }, { status: 403 });
   }
 
-  const needsTarget: Action[] = ["mute", "remove", "stop_share", "admit"];
+  const needsTarget: Action[] = ["mute", "remove", "stop_share", "admit", "promote", "demote"];
   if (needsTarget.includes(action) && !targetIdentity) {
     return NextResponse.json({ error: "targetIdentity is required." }, { status: 400 });
   }
@@ -93,6 +104,22 @@ export async function POST(req: NextRequest) {
         const enabled = action === "enable_waiting";
         await setWaitingEnabled(room.id, enabled);
         await setRoomMetadata(room.slug, { locked: room.locked, waitingEnabled: enabled });
+        break;
+      }
+      case "promote": {
+        // Mint a co-host key, mark them host, and deliver the key to just that person.
+        const key = await addCoHostKey(room.id, targetIdentity!);
+        await setParticipantRole(room.slug, targetIdentity!, "host");
+        await sendHostRole(room.slug, targetIdentity!, { type: "grant", key });
+        break;
+      }
+      case "demote": {
+        // Only affects actual co-hosts — protects the primary host from being demoted.
+        const revoked = await revokeCoHost(room.id, targetIdentity!);
+        if (revoked > 0) {
+          await setParticipantRole(room.slug, targetIdentity!, "guest");
+          await sendHostRole(room.slug, targetIdentity!, { type: "revoke" });
+        }
         break;
       }
       case "end":

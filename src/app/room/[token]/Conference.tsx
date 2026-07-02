@@ -69,8 +69,39 @@ export default function Conference({
   const [chatOpen, setChatOpen] = useState(false);
 
   const { localParticipant } = useLocalParticipant();
-  const host = useHostActions(inviteToken, hostKey);
   const connectionState = useConnectionState();
+
+  // Co-host promotion (FR-23): a promoted participant receives a host key over the data
+  // channel mid-session and becomes a host without rejoining. Persisted so it survives a
+  // reload (the token route accepts co-host keys too).
+  const [promotedKey, setPromotedKey] = useState<string | null>(null);
+  const effectiveHostKey = hostKey ?? promotedKey;
+  const effectiveIsHost = isHost || promotedKey !== null;
+  const host = useHostActions(inviteToken, effectiveHostKey);
+
+  useDataChannel("host_role", (msg) => {
+    try {
+      const data = JSON.parse(new TextDecoder().decode(msg.payload));
+      const storageKey = `hearth-host:${inviteToken}`;
+      if (data?.type === "grant" && data.key) {
+        try {
+          localStorage.setItem(storageKey, data.key);
+        } catch {
+          /* storage unavailable */
+        }
+        setPromotedKey(data.key);
+      } else if (data?.type === "revoke") {
+        try {
+          localStorage.removeItem(storageKey);
+        } catch {
+          /* storage unavailable */
+        }
+        setPromotedKey(null);
+      }
+    } catch {
+      /* ignore malformed */
+    }
+  });
 
   const { reactions, sendReaction } = useReactions();
   const raisedHands = useRaisedHands();
@@ -187,7 +218,7 @@ export default function Conference({
         <div className="topbar-left">
           <RoomPill
             roomName={roomName}
-            isHost={isHost}
+            isHost={effectiveIsHost}
             raisedIdentities={raisedIdentities}
             sharingIdentity={sharingIdentity}
             onMute={host.mute}
@@ -195,13 +226,15 @@ export default function Conference({
             onStopShare={host.stopShare}
             onRemove={host.remove}
             onMuteAll={() => host.muteAll(localParticipant.identity)}
+            onPromote={host.promote}
+            onDemote={host.demote}
           />
           {screenShareTrack && <span className="share-badge">● Screen sharing</span>}
           {locked && <span className="lock-badge">🔒 Locked</span>}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {isHost && (
+          {effectiveIsHost && (
             <WaitingHostIndicator
               waiting={waitingParticipants}
               onAdmit={host.admit}
@@ -215,7 +248,7 @@ export default function Conference({
               Pinned — follow speaker
             </button>
           )}
-          {isHost && (
+          {effectiveIsHost && (
             <div className="host-bar">
               <button
                 className={`ctrl-btn${waitingEnabled ? " active" : ""}`}
