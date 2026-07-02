@@ -34,12 +34,23 @@ export default function RoomClient({
 }) {
   const [stage, setStage] = useState<Stage>({ status: "prejoin" });
 
-  // The host key (if this browser created the meeting) lives in localStorage, keyed by
-  // invite token. Read it client-side after mount to avoid an SSR/hydration mismatch.
+  // The host key (if this browser is the host) lives in localStorage, keyed by invite
+  // token. A "host link" (…/room/<token>?host=<key>) lets someone claim host later or on
+  // another device: we persist the key, then strip it from the URL so it isn't left
+  // visible or accidentally re-shared. Read after mount to avoid an SSR/hydration mismatch.
   const [hostKey, setHostKey] = useState<string | null>(null);
   useEffect(() => {
+    const storageKey = `hearth-host:${inviteToken}`;
     try {
-      setHostKey(localStorage.getItem(`hearth-host:${inviteToken}`));
+      const params = new URLSearchParams(window.location.search);
+      const hostParam = params.get("host");
+      if (hostParam) {
+        localStorage.setItem(storageKey, hostParam);
+        params.delete("host");
+        const query = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : ""));
+      }
+      setHostKey(localStorage.getItem(storageKey));
     } catch {
       /* storage unavailable */
     }

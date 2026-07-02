@@ -17,16 +17,54 @@ function parseInviteToken(input: string): string | null {
   }
 }
 
+type Created = { token: string; hostKey: string; roomName: string };
+
+/** A read-only field with a copy button. */
+function CopyRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  return (
+    <div className="copy-row">
+      <div className="copy-row-head">
+        <span>{label}</span>
+        <button className="link-btn" onClick={copy}>
+          {copied ? "✓ Copied" : "Copy"}
+        </button>
+      </div>
+      <code className="copy-row-value">{value}</code>
+      {hint && <small style={{ color: "var(--color-text-muted)" }}>{hint}</small>}
+    </div>
+  );
+}
+
 export default function JoinForm({ waitingDefault = false }: { waitingDefault?: boolean }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [waitingEnabled, setWaitingEnabled] = useState(waitingDefault);
   const [linkInput, setLinkInput] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<Created | null>(null);
 
-  const createMeeting = async () => {
-    setCreating(true);
+  const rememberHost = (token: string, hostKey: string) => {
+    try {
+      localStorage.setItem(`hearth-host:${token}`, hostKey);
+    } catch {
+      /* storage may be unavailable (private mode) */
+    }
+  };
+
+  // join=true drops you straight into the meeting; join=false returns links to share/schedule.
+  const createMeeting = async (join: boolean) => {
+    setBusy(true);
     setError(null);
     try {
       const res = await fetch("/api/rooms", {
@@ -36,16 +74,16 @@ export default function JoinForm({ waitingDefault = false }: { waitingDefault?: 
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Couldn’t create the meeting.");
-      // Remember the host key locally — it makes this browser the meeting host.
-      try {
-        localStorage.setItem(`hearth-host:${body.token}`, body.hostKey);
-      } catch {
-        /* storage may be unavailable (private mode) — host controls just won't show */
+      rememberHost(body.token, body.hostKey);
+      if (join) {
+        router.push(`/room/${body.token}`);
+      } else {
+        setCreated(body);
+        setBusy(false);
       }
-      router.push(`/room/${body.token}`);
     } catch (err) {
       setError((err as Error).message);
-      setCreating(false);
+      setBusy(false);
     }
   };
 
@@ -54,16 +92,39 @@ export default function JoinForm({ waitingDefault = false }: { waitingDefault?: 
     if (token) router.push(`/room/${encodeURIComponent(token)}`);
   };
 
+  if (created) {
+    const origin = window.location.origin;
+    const guestLink = `${origin}/room/${created.token}`;
+    const hostLink = `${guestLink}?host=${created.hostKey}`;
+    return (
+      <div className="join-panel">
+        <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Meeting ready</h2>
+        <CopyRow label="Invite link (share this)" value={guestLink} />
+        <CopyRow
+          label="Host link (keep private)"
+          value={hostLink}
+          hint="Opening this makes you the host — don’t share it."
+        />
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button className="btn" onClick={() => router.push(`/room/${created.token}`)}>
+            Join now
+          </button>
+          <button className="btn btn-secondary" onClick={() => setCreated(null)}>
+            New meeting
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{ width: "min(100%, 380px)", display: "flex", flexDirection: "column", gap: "0.75rem" }}
-    >
+    <div className="join-panel">
       <input
         className="input"
         placeholder="Meeting name (optional)"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && createMeeting()}
+        onKeyDown={(e) => e.key === "Enter" && createMeeting(true)}
         aria-label="Meeting name"
         maxLength={80}
       />
@@ -78,13 +139,14 @@ export default function JoinForm({ waitingDefault = false }: { waitingDefault?: 
           <small>Guests wait until you let them in (waiting room)</small>
         </span>
       </label>
-      <button className="btn" onClick={createMeeting} disabled={creating}>
-        {creating ? "Starting…" : "Start meeting"}
+      <button className="btn" onClick={() => createMeeting(true)} disabled={busy}>
+        {busy ? "Working…" : "Start meeting"}
+      </button>
+      <button className="btn btn-secondary" onClick={() => createMeeting(false)} disabled={busy}>
+        Create link for later
       </button>
 
-      {error && (
-        <p style={{ color: "#f87171", fontSize: "0.85rem", margin: 0 }}>{error}</p>
-      )}
+      {error && <p style={{ color: "#f87171", fontSize: "0.85rem", margin: 0 }}>{error}</p>}
 
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <hr style={{ flex: 1, border: 0, borderTop: "1px solid var(--color-border)" }} />
