@@ -73,11 +73,13 @@ http://localhost:3000/api/health.
 
 ## Project status
 
-Built milestone by milestone (see the [implementation plan](IMPLEMENTATION_PLAN.md)).
-**M0–M7 complete:** foundation & infra; a working LiveKit call; multi-party layouts;
-screen sharing; chat/reactions/raise-hand; rooms & invite links; waiting room & host
-controls; background blur / virtual backgrounds. **Next: M8** — admin config &
-operability.
+**v1 feature-complete (M0–M9).** Foundation & infra; a working LiveKit call; multi-party
+layouts; screen sharing; chat/reactions/raise-hand; rooms & invite links; waiting room &
+host controls; background blur / virtual backgrounds; admin config & operability;
+multi-node scaling config. Production deploy: [DEPLOY.md](DEPLOY.md) (single-box) and
+[SCALING.md](SCALING.md) (multi-node + load testing). Remaining before GA: a real
+100-participant load test and cross-browser validation on live infra (see SCALING.md).
+Deferred to v2: SSO/accounts, recording, chat persistence.
 
 ### Testing a call across machines
 

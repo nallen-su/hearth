@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
 import type { LocalVideoTrack } from "livekit-client";
 import type { BackgroundProcessorWrapper } from "@livekit/track-processors";
+import { useDismiss } from "./useDismiss";
 
 // Served from our own origin (populated by `npm run setup:effects`) — never a CDN, so
 // nothing loads from a third party at runtime (Hearth privacy guardrail).
@@ -50,6 +51,8 @@ export function BackgroundEffectsButton() {
   const [open, setOpen] = useState(false);
   const [backgrounds, setBackgrounds] = useState<Background[]>([]);
   const procRef = useRef<BackgroundProcessorWrapper | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useDismiss(open, menuRef, () => setOpen(false));
 
   useEffect(() => {
     setBackgrounds([
@@ -105,10 +108,11 @@ export function BackgroundEffectsButton() {
   ];
 
   return (
-    <div className="reaction-bar">
+    <div className="reaction-bar" ref={menuRef}>
       <button
         className={`ctrl-btn${selection !== "none" ? " active" : ""}`}
         aria-label="Background effects"
+        aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >

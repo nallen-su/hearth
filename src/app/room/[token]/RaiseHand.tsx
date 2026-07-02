@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocalParticipant, useRoomContext } from "@livekit/components-react";
 import { RoomEvent } from "livekit-client";
+import { useDismiss } from "./useDismiss";
 
 const HAND_ATTR = "hand_raised"; // value = timestamp string when raised, "" when lowered
 
@@ -68,11 +69,18 @@ export function RaiseHandButton({ raised }: { raised: RaisedHand[] }) {
 /** Topbar pill + ordered list of who has a hand up (visible to everyone). */
 export function RaisedHandsIndicator({ raised }: { raised: RaisedHand[] }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(open, ref, () => setOpen(false));
   if (raised.length === 0) return null;
 
   return (
-    <div className="hands-indicator">
-      <button className="hands-pill" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+    <div className="hands-indicator" ref={ref}>
+      <button
+        className="hands-pill"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
         ✋ {raised.length}
       </button>
       {open && (

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   useLocalParticipant,
   useRoomContext,
   type LocalUserChoices,
 } from "@livekit/components-react";
 import { RoomEvent } from "livekit-client";
+import { useDismiss } from "./useDismiss";
 
 /**
  * Gates the meeting behind the waiting room (FR-20). A waiting participant is connected
@@ -84,11 +85,18 @@ export function WaitingHostIndicator({
   onAdmitAll: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(open, ref, () => setOpen(false));
   if (waiting.length === 0) return null;
 
   return (
-    <div className="hands-indicator">
-      <button className="hands-pill" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+    <div className="hands-indicator" ref={ref}>
+      <button
+        className="hands-pill"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
         ⧗ {waiting.length} waiting
       </button>
       {open && (

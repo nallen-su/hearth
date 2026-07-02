@@ -127,6 +127,20 @@ a {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+.reconnect-banner {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 1rem;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 .room-topbar {
   display: flex;

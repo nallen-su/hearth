@@ -9,6 +9,7 @@ import {
   MediaDeviceMenu,
   RoomAudioRenderer,
   useChat,
+  useConnectionState,
   useDataChannel,
   useLocalParticipant,
   useParticipants,
@@ -17,7 +18,7 @@ import {
   useTracks,
 } from "@livekit/components-react";
 import { isEqualTrackRef } from "@livekit/components-core";
-import { Track } from "livekit-client";
+import { ConnectionState, Track } from "livekit-client";
 import CenteredGridLayout from "./CenteredGridLayout";
 import HandTile from "./HandTile";
 import RoomPill from "./RoomPill";
@@ -69,6 +70,7 @@ export default function Conference({
 
   const { localParticipant } = useLocalParticipant();
   const host = useHostActions(inviteToken, hostKey);
+  const connectionState = useConnectionState();
 
   const { reactions, sendReaction } = useReactions();
   const raisedHands = useRaisedHands();
@@ -176,6 +178,11 @@ export default function Conference({
 
   return (
     <div className="room-shell">
+      {connectionState === ConnectionState.Reconnecting && (
+        <div className="reconnect-banner" role="status" aria-live="polite">
+          Reconnecting…
+        </div>
+      )}
       <header className="room-topbar">
         <div className="topbar-left">
           <RoomPill

@@ -1,0 +1,24 @@
+# LiveKit config for a MULTI-NODE deployment (M9). The key difference from the single-box
+# config is the `redis` block: it lets multiple LiveKit instances share room/participant
+# routing state so a room can live on any node. See SCALING.md.
+#
+# Each LiveKit node runs on its own host with its own routable public IP — media (UDP)
+# goes directly to the node, so nodes are NOT interchangeable behind a plain HTTP LB.
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: true # each node advertises its own routable IP
+
+# Shared coordination store — all nodes point at the same Redis.
+redis:
+  address: redis:6379
+  # password: <set in production>
+
+keys:
+  # Replace with real key/secret (same across nodes); keep out of the image.
+  devkey: devsecret_change_me_at_least_32_characters
+
+logging:
+  level: info

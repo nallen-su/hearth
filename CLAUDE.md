@@ -20,9 +20,12 @@ no publish/subscribe until admitted); background blur / virtual backgrounds (cli
 MediaPipe via `@livekit/track-processors`, assets served locally — no CDN); admin config
 & operability (env-driven meeting defaults + waiting-room default + link expiry; structured
 JSON logger; health checks DB + LiveKit; read-only `/admin` status page gated by ADMIN_KEY;
-production Dockerfile + Caddy TLS + `DEPLOY.md` single-box runbook). **Next: M9** — scale,
-load test & hardening. Deferred: chat persistence (FR-16, needs server-side capture);
-host-transfer/co-host (FR-23, pre-accounts).
+production Dockerfile + Caddy TLS + `DEPLOY.md` single-box runbook); scale & hardening
+(multi-node LiveKit + Redis config + `SCALING.md`; reconnect banner via `useConnectionState`;
+a11y — Escape/outside-click dismiss + aria on menus; load-test method + sizing guidance).
+**M0–M9 complete — v1 feature-complete.** Remaining validation (real 100-participant load
+test, cross-browser, hardware pinning) needs live cloud infra — see SCALING.md. Deferred to
+v2: chat persistence (FR-16); host-transfer/co-host (FR-23); SSO/accounts; recording.
 
 **Read these first — they are the source of truth:**
 - [PRD.md](PRD.md) — product requirements, architecture, scope (and what's explicitly out).
@@ -124,9 +127,12 @@ src/
     livekit.ts               # token minting + host admin actions + counts + pingLiveKit
     rooms.ts                 # rooms/invite-links data access (create/resolve/revoke)
     logger.ts                # structured JSON logger (one line per event) — no secrets
+    (room/[token]/useDismiss.ts, useHostActions.ts — client hooks colocated with the route)
 scripts/setup-effects.mjs    # bundle MediaPipe assets into public/mediapipe (no CDN)
 Dockerfile                   # production app image (standalone); deploy/ has prod compose + Caddy
 DEPLOY.md                    # single-box production runbook
+SCALING.md                   # multi-node topology, load-test method, sizing (M9)
+livekit/livekit.multinode.yaml # LiveKit config with redis (multi-node)
   db/migrations/             # forward-only *.sql, applied lexically by scripts/migrate.ts
 scripts/migrate.ts           # dependency-light migration runner
 docker-compose.yml           # Postgres + LiveKit + coturn (pinned)

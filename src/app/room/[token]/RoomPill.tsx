@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useParticipants } from "@livekit/components-react";
+import { useDismiss } from "./useDismiss";
 
 const PeopleIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -55,18 +56,7 @@ export default function RoomPill({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Close the attendee dropdown on an outside click.
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [open]);
+  useDismiss(open, containerRef, () => setOpen(false));
 
   // Waiting participants are shown to the host in a separate panel, not the main roster.
   const active = participants.filter((p) => roleOf(p.metadata) !== "waiting");
@@ -93,6 +83,7 @@ export default function RoomPill({
           className="room-pill-count"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
+          aria-haspopup="menu"
           aria-label="Show participants"
         >
           <PeopleIcon />

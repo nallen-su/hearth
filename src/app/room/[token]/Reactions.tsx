@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDataChannel } from "@livekit/components-react";
+import { useDismiss } from "./useDismiss";
 
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "🎉", "👏", "😮"];
 const REACTIONS_TOPIC = "reactions";
@@ -45,11 +46,14 @@ export function useReactions() {
 /** Emoji picker button (sits in the control bar). */
 export function ReactionBar({ onReact }: { onReact: (emoji: string) => void }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useDismiss(open, ref, () => setOpen(false));
   return (
-    <div className="reaction-bar">
+    <div className="reaction-bar" ref={ref}>
       <button
         className="ctrl-btn"
         aria-label="Send a reaction"
+        aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
